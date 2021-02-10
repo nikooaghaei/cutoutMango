@@ -198,10 +198,16 @@ def train_loop(training_loader, testing_loader, sec_run):
     return
 
 def main():
-    global model_options = ['resnet18', 'wideresnet']
-    global dataset_options = ['cifar10', 'cifar100', 'svhn']
+    global model_options
+    global dataset_options
+    global parser 
+    global test_id
+    global args
 
-    global parser = argparse.ArgumentParser(description='CNN')
+    model_options = ['resnet18', 'wideresnet']
+    dataset_options = ['cifar10', 'cifar100', 'svhn']
+
+    parser = argparse.ArgumentParser(description='CNN')
     parser.add_argument('--dataset', '-d', default='cifar10',
                         choices=dataset_options)
     parser.add_argument('--model', '-a', default='resnet18',
@@ -231,7 +237,9 @@ def main():
     parser.add_argument('--experiment_type', type=str, default='default',
                         help='default: default values with no retraining')
 
-    global args = parser.parse_args()
+    args = parser.parse_args()
+    
+
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     cudnn.benchmark = True  # Should make training should go faster for large models
 
@@ -239,7 +247,7 @@ def main():
     if args.cuda:
         torch.cuda.manual_seed(args.seed)
 
-    global test_id = args.dataset + '_' + args.model
+    test_id = args.dataset + '_' + args.model
 
     # Image Preprocessing
     if args.dataset == 'svhn':
