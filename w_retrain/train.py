@@ -197,14 +197,9 @@ def train_loop(training_loader, testing_loader, sec_run):
 
     return
 
-def main():
-    global model_options
-    global dataset_options
-    global parser 
-    global test_id
-    global args
-    global cnn
-
+if __name__ == '__main__':
+    # mp.set_start_method('spawn')
+    
     model_options = ['resnet18', 'wideresnet']
     dataset_options = ['cifar10', 'cifar100', 'svhn']
 
@@ -357,7 +352,3 @@ def main():
 
         torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
         MNG_csv_logger.close()
-
-if __name__ == '__main__':
-    mp.set_start_method('spawn')
-    main()
