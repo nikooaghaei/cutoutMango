@@ -30,52 +30,6 @@ from model.wide_resnet import WideResNet
 from multiprocessing import set_start_method
 import multiprocessing as mp
 
-
-model_options = ['resnet18', 'wideresnet']
-dataset_options = ['cifar10', 'cifar100', 'svhn']
-
-parser = argparse.ArgumentParser(description='CNN')
-parser.add_argument('--dataset', '-d', default='cifar10',
-                    choices=dataset_options)
-parser.add_argument('--model', '-a', default='resnet18',
-                    choices=model_options)
-parser.add_argument('--batch_size', type=int, default=128,
-                    help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=1,
-                    help='number of epochs to train (default: 200)')
-parser.add_argument('--learning_rate', type=float, default=0.1,
-                    help='learning rate')
-parser.add_argument('--data_augmentation', action='store_true', default=False,
-                    help='augment data by flipping and cropping')
-parser.add_argument('--cutout', action='store_true', default=False,
-                    help='apply cutout')
-parser.add_argument('--n_holes', type=int, default=1,
-                    help='number of holes to cut out from image')
-parser.add_argument('--length', type=int, default=16,
-                    help='length of the holes')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='enables CUDA training')
-parser.add_argument('--seed', type=int, default=0,
-                    help='random seed (default: 1)')
-
-######################new
-parser.add_argument('--mango', action='store_true', default=False,  ##newwwww
-                    help='apply mango')
-parser.add_argument('--experiment_type', type=str, default='default',
-                    help='default: default values with no retraining')
-
-args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
-cudnn.benchmark = True  # Should make training should go faster for large models
-
-torch.manual_seed(args.seed)
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
-
-test_id = args.dataset + '_' + args.model
-
-print(args)
-
 #########################new
 def find_main_part(loader):######newwwwwwwwww
     cnn.eval()    ########????????????
@@ -89,8 +43,6 @@ def find_main_part(loader):######newwwwwwwwww
             for i in range (128):
                 #i = random.randint(0, 128)
                 mng = Mango(cnn, images[i])
-#                print("true label:" + str(labels[i]))
-
                 main_nodes.append(mng())
 
                 ###printing results
@@ -170,6 +122,7 @@ def creat_dataset(training_transform, testing_transform, root):
 
 
     return training_dataset, testing_dataset, num_classes
+
 ########################################new
 def train_loop(training_loader, testing_loader, sec_run):
     FLAG_THRESHOLD = False
@@ -199,9 +152,6 @@ def train_loop(training_loader, testing_loader, sec_run):
             pred = cnn(images)
 
             #########temp
-#            if booll:
- #               for i in range(len(images)):
-  #                  save_image(images[i], 'test/'+str(i)+'.png')
 
             xentropy_loss = criterion(pred, labels)
             xentropy_loss.backward()
@@ -247,111 +197,158 @@ def train_loop(training_loader, testing_loader, sec_run):
 
     return
 
+def main():
+    global model_options = ['resnet18', 'wideresnet']
+    global dataset_options = ['cifar10', 'cifar100', 'svhn']
 
-# Image Preprocessing
-if args.dataset == 'svhn':
-    normalize = transforms.Normalize(mean=[x / 255.0 for x in[109.9, 109.7, 113.8]],
-                                     std=[x / 255.0 for x in [50.1, 50.6, 50.8]])
-else:
-    normalize = transforms.Normalize(mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
-                                     std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
+    global parser = argparse.ArgumentParser(description='CNN')
+    parser.add_argument('--dataset', '-d', default='cifar10',
+                        choices=dataset_options)
+    parser.add_argument('--model', '-a', default='resnet18',
+                        choices=model_options)
+    parser.add_argument('--batch_size', type=int, default=128,
+                        help='input batch size for training (default: 128)')
+    parser.add_argument('--epochs', type=int, default=1,
+                        help='number of epochs to train (default: 200)')
+    parser.add_argument('--learning_rate', type=float, default=0.1,
+                        help='learning rate')
+    parser.add_argument('--data_augmentation', action='store_true', default=False,
+                        help='augment data by flipping and cropping')
+    parser.add_argument('--cutout', action='store_true', default=False,
+                        help='apply cutout')
+    parser.add_argument('--n_holes', type=int, default=1,
+                        help='number of holes to cut out from image')
+    parser.add_argument('--length', type=int, default=16,
+                        help='length of the holes')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='enables CUDA training')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='random seed (default: 1)')
 
+    ######################new
+    parser.add_argument('--mango', action='store_true', default=False,  ##newwwww
+                        help='apply mango')
+    parser.add_argument('--experiment_type', type=str, default='default',
+                        help='default: default values with no retraining')
 
-################testtttttttt
-_CIFAR_MEAN, _CIFAR_STD = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
-UA_normalize = transforms.Normalize(_CIFAR_MEAN, _CIFAR_STD)
+    global args = parser.parse_args()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    cudnn.benchmark = True  # Should make training should go faster for large models
 
-#creating train/test transform
-train_transform = transforms.Compose([])
+    torch.manual_seed(args.seed)
+    if args.cuda:
+        torch.cuda.manual_seed(args.seed)
 
-if args.data_augmentation:
-    train_transform.transforms.append(transforms.RandomCrop(32, padding=4))
-    train_transform.transforms.append(transforms.RandomHorizontalFlip())
+    global test_id = args.dataset + '_' + args.model
 
-train_transform.transforms.append(transforms.ToTensor())
-train_transform.transforms.append(normalize)
-
-if args.cutout:
-    train_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
-
-test_transform = transforms.Compose([
-    transforms.ToTensor(), normalize])
-
-#creating the dataset for normal train and test
-train_dataset, test_dataset, num_classes = creat_dataset(train_transform, test_transform, 'data/')
-
-#creating data loaders
-# Data Loader (Input Pipeline)
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                        batch_size=args.batch_size,
-                                        shuffle=True,
-                                        pin_memory=True,
-                                        num_workers=2)
-
-test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
-                                        batch_size=args.batch_size,
-                                        shuffle=False,
-                                        pin_memory=True,
-                                        num_workers=2)
-
-#creating the model
-if args.model == 'resnet18':
-    cnn = ResNet18(num_classes=num_classes)
-elif args.model == 'wideresnet':
+    # Image Preprocessing
     if args.dataset == 'svhn':
-        cnn = WideResNet(depth=16, num_classes=num_classes, widen_factor=8,
-                         dropRate=0.4)
+        normalize = transforms.Normalize(mean=[x / 255.0 for x in[109.9, 109.7, 113.8]],
+                                        std=[x / 255.0 for x in [50.1, 50.6, 50.8]])
     else:
-        cnn = WideResNet(depth=28, num_classes=num_classes, widen_factor=10,
-                         dropRate=0.3)
+        normalize = transforms.Normalize(mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
+                                        std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
 
-cnn = cnn.cuda()
-criterion = nn.CrossEntropyLoss().cuda()
-cnn_optimizer = torch.optim.SGD(cnn.parameters(), lr=args.learning_rate,
-                                momentum=0.9, nesterov=True, weight_decay=5e-4)
 
-if args.dataset == 'svhn':
-    scheduler = MultiStepLR(cnn_optimizer, milestones=[80, 120], gamma=0.1)
-else:
-    scheduler = MultiStepLR(cnn_optimizer, milestones=[60, 120, 160], gamma=0.2)
+    ################testtttttttt
+    _CIFAR_MEAN, _CIFAR_STD = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+    UA_normalize = transforms.Normalize(_CIFAR_MEAN, _CIFAR_STD)
 
-filename = 'logs/' + test_id + '.csv'
-csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
-
-###simple testing and training loop
-train_loop(train_loader, test_loader, False)
-
-torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
-csv_logger.close()
-
-del train_loader
-#################################################newwwwwwwwwwwwwwwwwww
-if args.mango:
-    retrain_transform = transforms.Compose([])
+    #creating train/test transform
+    train_transform = transforms.Compose([])
 
     if args.data_augmentation:
-        retrain_transform.transforms.append(transforms.RandomCrop(32, padding=4))
-        retrain_transform.transforms.append(transforms.RandomHorizontalFlip())
+        train_transform.transforms.append(transforms.RandomCrop(32, padding=4))
+        train_transform.transforms.append(transforms.RandomHorizontalFlip())
+
+    train_transform.transforms.append(transforms.ToTensor())
+    train_transform.transforms.append(normalize)
 
     if args.cutout:
-        retrain_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
+        train_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
 
-    retrain_transform.transforms.append(transforms.ToTensor())
-    retrain_transform.transforms.append(normalize)
-    retrain_transform.transforms.append(Mango(cnn))
+    test_transform = transforms.Compose([
+        transforms.ToTensor(), normalize])
 
-    retrain_dataset, test_dataset, num_classes = creat_dataset(retrain_transform, test_transform, 'data/MANGO')
+    #creating the dataset for normal train and test
+    train_dataset, test_dataset, num_classes = creat_dataset(train_transform, test_transform, 'data/')
 
-    retrain_loader = torch.utils.data.DataLoader(dataset=retrain_dataset,
-                                            batch_size=args.batch_size,###############????same?
+    #creating data loaders
+    # Data Loader (Input Pipeline)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                            batch_size=args.batch_size,
                                             shuffle=True,
-#                                            pin_memory=True,
+                                            pin_memory=True,
                                             num_workers=2)
 
-    MNG_filename = 'logs/MANGO/' + test_id + '.csv'
-    MNG_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=MNG_filename)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
+                                            batch_size=args.batch_size,
+                                            shuffle=False,
+                                            pin_memory=True,
+                                            num_workers=2)
 
-    train_loop(retrain_loader,test_loader, True)
+    #creating the model
+    if args.model == 'resnet18':
+        cnn = ResNet18(num_classes=num_classes)
+    elif args.model == 'wideresnet':
+        if args.dataset == 'svhn':
+            cnn = WideResNet(depth=16, num_classes=num_classes, widen_factor=8,
+                            dropRate=0.4)
+        else:
+            cnn = WideResNet(depth=28, num_classes=num_classes, widen_factor=10,
+                            dropRate=0.3)
 
-    torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
-    MNG_csv_logger.close()
+    cnn = cnn.cuda()
+    criterion = nn.CrossEntropyLoss().cuda()
+    cnn_optimizer = torch.optim.SGD(cnn.parameters(), lr=args.learning_rate,
+                                    momentum=0.9, nesterov=True, weight_decay=5e-4)
+
+    if args.dataset == 'svhn':
+        scheduler = MultiStepLR(cnn_optimizer, milestones=[80, 120], gamma=0.1)
+    else:
+        scheduler = MultiStepLR(cnn_optimizer, milestones=[60, 120, 160], gamma=0.2)
+
+    filename = 'logs/' + test_id + '.csv'
+    csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
+
+    ###simple testing and training loop
+    train_loop(train_loader, test_loader, False)
+
+    torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
+    csv_logger.close()
+
+    del train_loader
+    #################################################newwwwwwwwwwwwwwwwwww
+    if args.mango:
+        retrain_transform = transforms.Compose([])
+
+        if args.data_augmentation:
+            retrain_transform.transforms.append(transforms.RandomCrop(32, padding=4))
+            retrain_transform.transforms.append(transforms.RandomHorizontalFlip())
+
+        if args.cutout:
+            retrain_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
+
+        retrain_transform.transforms.append(transforms.ToTensor())
+        retrain_transform.transforms.append(normalize)
+        retrain_transform.transforms.append(Mango(cnn))
+
+        retrain_dataset, test_dataset, num_classes = creat_dataset(retrain_transform, test_transform, 'data/MANGO')
+
+        retrain_loader = torch.utils.data.DataLoader(dataset=retrain_dataset,
+                                                batch_size=args.batch_size,###############????same?
+                                                shuffle=True,
+    #                                            pin_memory=True,
+                                                num_workers=2)
+
+        MNG_filename = 'logs/MANGO/' + test_id + '.csv'
+        MNG_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=MNG_filename)
+
+        train_loop(retrain_loader,test_loader, True)
+
+        torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
+        MNG_csv_logger.close()
+
+if __name__ == '__main__':
+    mp.set_start_method('spawn')
+    main()
