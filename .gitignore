@@ -1,2 +1,6 @@
 __pycache__/
 logs/
+
+*.tar.gz
+
+.DS_Store
