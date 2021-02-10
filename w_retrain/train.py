@@ -198,6 +198,14 @@ def train_loop(training_loader, testing_loader, sec_run):
     return
 
 def main():
+    global model_options
+    global dataset_options
+    global parser 
+    global test_id
+    global args
+    global cnn
+    global criterion
+    global cnn_optimizer
     model_options = ['resnet18', 'wideresnet']
     dataset_options = ['cifar10', 'cifar100', 'svhn']
 
@@ -230,6 +238,9 @@ def main():
                         help='apply mango')
     parser.add_argument('--experiment_type', type=str, default='default',
                         help='default: default values with no retraining')
+    parser.add_argument('--n_workers', type=int, default=2,
+			help='number of workers')
+
 
     args = parser.parse_args()
     
@@ -281,13 +292,13 @@ def main():
                                             batch_size=args.batch_size,
                                             shuffle=True,
                                             pin_memory=True,
-                                            num_workers=2)
+                                            num_workers=args.n_workers)
 
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                             batch_size=args.batch_size,
                                             shuffle=False,
                                             pin_memory=True,
-                                            num_workers=2)
+                                            num_workers=args.n_workers)
 
     #creating the model
     if args.model == 'resnet18':
@@ -304,7 +315,7 @@ def main():
     criterion = nn.CrossEntropyLoss().cuda()
     cnn_optimizer = torch.optim.SGD(cnn.parameters(), lr=args.learning_rate,
                                     momentum=0.9, nesterov=True, weight_decay=5e-4)
-
+    global scheduler
     if args.dataset == 'svhn':
         scheduler = MultiStepLR(cnn_optimizer, milestones=[80, 120], gamma=0.1)
     else:
@@ -319,7 +330,6 @@ def main():
     torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
     csv_logger.close()
 
-    del train_loader
     #################################################newwwwwwwwwwwwwwwwwww
     if args.mango:
         retrain_transform = transforms.Compose([])
@@ -333,15 +343,17 @@ def main():
 
         retrain_transform.transforms.append(transforms.ToTensor())
         retrain_transform.transforms.append(normalize)
-        retrain_transform.transforms.append(Mango(cnn))
-
+        #retrain_transform.transforms.append(Mango(cnn))
+        retrain_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
         retrain_dataset, test_dataset, num_classes = creat_dataset(retrain_transform, test_transform, 'data/MANGO')
-
+#        print(retrain_dataset.__len__())
+        print(retrain_dataset.__getitem__(0)[0].shape)
+#        sys.exit()
         retrain_loader = torch.utils.data.DataLoader(dataset=retrain_dataset,
                                                 batch_size=args.batch_size,###############????same?
                                                 shuffle=True,
-    #                                            pin_memory=True,
-                                                num_workers=2)
+#                                                pin_memory=True,
+                                                num_workers=args.n_workers)
 
         MNG_filename = 'logs/MANGO/' + test_id + '.csv'
         MNG_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=MNG_filename)
