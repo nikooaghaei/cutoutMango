@@ -203,6 +203,7 @@ def main():
     global parser 
     global test_id
     global args
+    global cnn
 
     model_options = ['resnet18', 'wideresnet']
     dataset_options = ['cifar10', 'cifar100', 'svhn']
