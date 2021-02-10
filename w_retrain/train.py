@@ -192,14 +192,12 @@ def train_loop(training_loader, testing_loader, sec_run):
 
         row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
         
-        if FLAG_THRESHOLD:
-             break
+        # if FLAG_THRESHOLD:
+        #      break
 
     return
 
-if __name__ == '__main__':
-    # mp.set_start_method('spawn')
-    
+def main():
     model_options = ['resnet18', 'wideresnet']
     dataset_options = ['cifar10', 'cifar100', 'svhn']
 
@@ -352,3 +350,7 @@ if __name__ == '__main__':
 
         torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
         MNG_csv_logger.close()
+
+if __name__ == '__main__':
+    mp.set_start_method('spawn')
+    main()
