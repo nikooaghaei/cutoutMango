@@ -125,17 +125,17 @@ def creat_dataset(training_transform, testing_transform, root):
 
 ########################################new
 def train_loop(training_loader, testing_loader, sec_run):
-    FLAG_THRESHOLD = False
-    threshold = 0.0001
-    diff_counter = 0
-    diff_limit = 4
+#    FLAG_THRESHOLD = False
+ #   threshold = 0.0001
+  #  diff_counter = 0
+   # diff_limit = 4
     for epoch in range(args.epochs):
 
        	xentropy_loss_avg = 0.
         correct = 0.
         total = 0.
 
-        prev_acc = 0
+    #    prev_acc = 0
 
         progress_bar = tqdm(training_loader)
         for i, (images, labels) in enumerate(progress_bar):   
@@ -177,13 +177,13 @@ def train_loop(training_loader, testing_loader, sec_run):
 	    # THRESHOLD CHECK #
 	    ###################
 
-            if accuracy - prev_acc <= threshold:
-                diff_counter += 1
-                if diff_counter == diff_limit:
-                    FLAG_THRESHOLD = True        
-            else:
-                diff_counter = 0   
-            prev_acc = accuracy
+#            if accuracy - prev_acc <= threshold:
+ #               diff_counter += 1
+  #              if diff_counter == diff_limit:
+   #                 FLAG_THRESHOLD = True        
+    #        else:
+      #          diff_counter = 0   
+     #       prev_acc = accuracy
 
 #            print("end")
 
@@ -207,6 +207,115 @@ def train_loop(training_loader, testing_loader, sec_run):
  #           break
 
     return
+
+########################################new
+def train_loop2(training_loader, testing_loader):
+   # FLAG_THRESHOLD = False
+    #threshold = 0.0001
+    #diff_counter = 0
+    #diff_limit = 4
+
+##############creating new data
+    masked_imgs=[]
+    all_labels= []
+   
+    temp = 10
+   
+    cnn.eval()
+    progress_bar = tqdm(training_loader)
+    for i, (images, labels) in enumerate(progress_bar):
+
+        images = images.cuda()
+        labels = labels.cuda()
+
+        for index in range(len(images)):
+            with torch.no_grad():
+                mng = Mango(cnn)
+                res = mng(images[index])
+            if mng.res.mask_loc:       #if mask was not None (image has changed)
+                masked_imgs.append(res)
+                all_labels.append(labels[index])
+   #     temp = temp - 1
+    #    if temp == 0:
+     #       break
+    all_labels = torch.stack(all_labels)
+    masked_imgs = torch.stack(masked_imgs)
+
+    cnn.train()
+############starting epochs
+    for epoch in range(args.epochs):
+
+        xentropy_loss_avg = 0.
+        correct = 0.
+        total = 0.
+
+   #     prev_acc = 0
+        for k in range(0, len(masked_imgs), 128):
+            batch_imgs= []
+            batch_labels = []
+
+            for j in range(k, k+128):
+                if j >= len(masked_imgs):
+                    break
+                batch_imgs.append(masked_imgs[j])
+                batch_labels.append(all_labels[j])
+
+            batch_imgs = torch.stack(batch_imgs)
+            batch_labels = torch.stack(batch_labels)
+
+            cnn.zero_grad()
+            pred = cnn(batch_imgs)
+
+            xentropy_loss = criterion(pred, batch_labels)
+            xentropy_loss.backward()
+            cnn_optimizer.step()
+
+            xentropy_loss_avg += xentropy_loss.item()
+
+            # Calculate running average of accuracy
+            pred = torch.max(pred.data, 1)[1]
+            total += batch_labels.size(0)
+            correct += (pred == batch_labels.data).sum().item()
+            accuracy = correct / total
+
+            # THRESHOLD CHECK #
+            ###################
+
+#            if accuracy - prev_acc <= threshold:
+ #               diff_counter += 1
+  #              if diff_counter == diff_limit:
+   #                 FLAG_THRESHOLD = True
+    #        else:
+     #           diff_counter = 0
+      #      prev_acc = accuracy
+
+
+            ###################
+#            progress_bar.set_postfix(
+ #               xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
+  #              acc='%.3f' % accuracy)
+
+    #    main_parts = find_main_part(test_loader)    ##Newwwwwwwww
+        
+        print("xentropy=", '%.3f'% (xentropy_loss_avg / (i + 1)), "acc = ", '%.3f' % accuracy)
+ 
+    test_acc = test(testing_loader)
+
+    print("test acc = ", '%.3f'% test_acc)
+ 
+        #tqdm.write('test_acc: %.3f' % (test_acc))
+
+#        scheduler.step(epoch)  # Use this line for PyTorch <1.4
+    scheduler.step()     # Use this line for PyTorch >=1.4
+
+    row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)}
+
+#       if FLAG_THRESHOLD:
+ #           break
+
+    return
+
+
 
 def main():
     global model_options
@@ -369,7 +478,7 @@ def main():
         MNG_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=MNG_filename)
 
 #        train_loop(retrain_loader,test_loader, True)
-        train_loop(train_loader, test_loader, True)
+        train_loop2(train_loader, test_loader)
 
         torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
         MNG_csv_logger.close()
