@@ -124,7 +124,7 @@ def creat_dataset(training_transform, testing_transform, root):
     return training_dataset, testing_dataset, num_classes
 
 ########################################new
-def train_loop(training_loader, testing_loader, sec_run):
+def train_loop(training_loader, testing_loader):
 #    FLAG_THRESHOLD = False
  #   threshold = 0.0001
   #  diff_counter = 0
@@ -148,18 +148,18 @@ def train_loop(training_loader, testing_loader, sec_run):
 
 #            print("start")
 
-            if sec_run:
-                masked_imgs=[]
-                for image in images:
-                    mng = Mango(cnn)
-                    res = mng(image)
+#            if sec_run:
+ #               masked_imgs=[]
+  #              for image in images:
+   #                 mng = Mango(cnn)
+    #                res = mng(image)
 #                    if mng.res.mask_loc:	#if mask was not None (image has changed)
-                    masked_imgs.append(res)
-                masked_imgs = torch.stack(masked_imgs)
+     #               masked_imgs.append(res)
+      #          masked_imgs = torch.stack(masked_imgs)
         
-                pred = cnn(masked_imgs)
-            else:
-                pred = cnn(images)
+       #         pred = cnn(masked_imgs)
+        #    else:
+            pred = cnn(images)
 
 #            print("tart")
             xentropy_loss = criterion(pred, labels)
@@ -202,7 +202,7 @@ def train_loop(training_loader, testing_loader, sec_run):
         scheduler.step()     # Use this line for PyTorch >=1.4
 
         row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
-        
+        csv_logger.writerow(row)
 #       if FLAG_THRESHOLD:
  #           break
 
@@ -219,9 +219,10 @@ def train_loop2(training_loader, testing_loader):
     masked_imgs=[]
     all_labels= []
    
-    temp = 10
-   
+    temp = 3
+    
     cnn.eval()
+   
     progress_bar = tqdm(training_loader)
     for i, (images, labels) in enumerate(progress_bar):
 
@@ -235,11 +236,11 @@ def train_loop2(training_loader, testing_loader):
             if mng.res.mask_loc:       #if mask was not None (image has changed)
                 masked_imgs.append(res)
                 all_labels.append(labels[index])
-   #     temp = temp - 1
-    #    if temp == 0:
-     #       break
-    all_labels = torch.stack(all_labels)
-    masked_imgs = torch.stack(masked_imgs)
+#        temp = temp - 1
+ #       if temp == 0:
+  #          break
+#    all_labels = torch.stack(all_labels)
+ #   masked_imgs = torch.stack(masked_imgs)
 
     cnn.train()
 ############starting epochs
@@ -297,19 +298,19 @@ def train_loop2(training_loader, testing_loader):
 
     #    main_parts = find_main_part(test_loader)    ##Newwwwwwwww
         
-        print("xentropy=", '%.3f'% (xentropy_loss_avg / (i + 1)), "acc = ", '%.3f' % accuracy)
+            print("xentropy=", '%.3f'% (xentropy_loss_avg / (i + 1)), "	  acc = ", '%.3f' % accuracy)
  
-    test_acc = test(testing_loader)
+        test_acc = test(testing_loader)
 
-    print("test acc = ", '%.3f'% test_acc)
+        print("test acc = ", '%.3f'% test_acc)
  
         #tqdm.write('test_acc: %.3f' % (test_acc))
 
 #        scheduler.step(epoch)  # Use this line for PyTorch <1.4
-    scheduler.step()     # Use this line for PyTorch >=1.4
+        scheduler.step()     # Use this line for PyTorch >=1.4
 
-    row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)}
-
+        row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)}
+        MNG_csv_logger.writerow(row)
 #       if FLAG_THRESHOLD:
  #           break
 
@@ -321,6 +322,8 @@ def main():
     global model_options
     global dataset_options
     global parser 
+    global csv_logger
+    global MNG_csv_logger
     global test_id
     global args
     global cnn
@@ -446,7 +449,7 @@ def main():
     csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
 
     ###simple testing and training loop
-    train_loop(train_loader, test_loader, False)
+    train_loop(train_loader, test_loader)
 
     torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
     csv_logger.close()

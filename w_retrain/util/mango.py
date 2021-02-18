@@ -40,8 +40,10 @@ class Mango(object):
 #        torch.set_printoptions(profile="full")
         
         self.root = Tree(root_img)
-	 
-        pred = self.model(self.root.data.view(1,3,32,32))
+    
+        with torch.no_grad(): 
+            pred = self.model(self.root.data.view(1,3,32,32))
+    
         value, index = nnf.softmax(pred, dim = 1).max(1)
         self.root.prob = value
         self.root_label = index[0]
@@ -129,7 +131,8 @@ class Mango(object):
                 mask_coord = (y[j], y[j+1], x[k], x[k+1])
 
                 #####building child probability
-                pred = self.model(child_data.view(1,3,32,32))
+                with torch.no_grad():
+                    pred = self.model(child_data.view(1,3,32,32))
                 softmax_prob = nnf.softmax(pred, dim = 1)
 
                 #####adding new child to tree
