@@ -39,7 +39,7 @@ def find_main_part(loader):######newwwwwwwwww
         labels = labels.cuda()
 
         with torch.no_grad():
-    #        for image in images:
+            # for image in images:
             for i in range (128):
                 #i = random.randint(0, 128)
                 mng = Mango(cnn, images[i])
@@ -125,17 +125,11 @@ def creat_dataset(training_transform, testing_transform, root):
 
 ########################################new
 def train_loop(training_loader, testing_loader):
-#    FLAG_THRESHOLD = False
- #   threshold = 0.0001
-  #  diff_counter = 0
-   # diff_limit = 4
     for epoch in range(args.epochs):
 
        	xentropy_loss_avg = 0.
         correct = 0.
         total = 0.
-
-    #    prev_acc = 0
 
         progress_bar = tqdm(training_loader)
         for i, (images, labels) in enumerate(progress_bar):   
@@ -146,22 +140,21 @@ def train_loop(training_loader, testing_loader):
 
             cnn.zero_grad()
 
-#            print("start")
+            # print("start")
 
-#            if sec_run:
- #               masked_imgs=[]
-  #              for image in images:
-   #                 mng = Mango(cnn)
-    #                res = mng(image)
-#                    if mng.res.mask_loc:	#if mask was not None (image has changed)
-     #               masked_imgs.append(res)
-      #          masked_imgs = torch.stack(masked_imgs)
-        
-       #         pred = cnn(masked_imgs)
-        #    else:
+            # if sec_run:
+            #     masked_imgs=[]
+            #     for image in images:
+            #         mng = Mango(cnn)
+            #         res = mng(image)
+            #         if mng.res.mask_loc:	#if mask was not None (image has changed)
+            #         masked_imgs.append(res)
+            #     masked_imgs = torch.stack(masked_imgs)
+            
+            #     pred = cnn(masked_imgs)
+            # else:
             pred = cnn(images)
 
-#            print("tart")
             xentropy_loss = criterion(pred, labels)
             xentropy_loss.backward()
             cnn_optimizer.step()
@@ -173,49 +166,28 @@ def train_loop(training_loader, testing_loader):
             total += labels.size(0)
             correct += (pred == labels.data).sum().item()
             accuracy = correct / total
-             
-	    # THRESHOLD CHECK #
-	    ###################
-
-#            if accuracy - prev_acc <= threshold:
- #               diff_counter += 1
-  #              if diff_counter == diff_limit:
-   #                 FLAG_THRESHOLD = True        
-    #        else:
-      #          diff_counter = 0   
-     #       prev_acc = accuracy
-
-#            print("end")
-
-	    ###################
+        
             progress_bar.set_postfix(
                 xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
                 acc='%.3f' % accuracy)
 
-    #    main_parts = find_main_part(test_loader)    ##Newwwwwwwww
-#        print("before test")
+        # main_parts = find_main_part(test_loader)    ##Newwwwwwwww
+        # print("before test")
         test_acc = test(testing_loader)  
- #       print("after test")
+        # print("after test")
         tqdm.write('test_acc: %.3f' % (test_acc))  
 
-#        scheduler.step(epoch)  # Use this line for PyTorch <1.4
+        # scheduler.step(epoch)  # Use this line for PyTorch <1.4
         scheduler.step()     # Use this line for PyTorch >=1.4
 
         row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
         csv_logger.writerow(row)
-#       if FLAG_THRESHOLD:
- #           break
-
     return
 
 ########################################new
 def train_loop2(training_loader, testing_loader):
-   # FLAG_THRESHOLD = False
-    #threshold = 0.0001
-    #diff_counter = 0
-    #diff_limit = 4
 
-##############creating new data
+    ##############creating new data
     masked_imgs=[]
     all_labels= []
    
@@ -223,7 +195,7 @@ def train_loop2(training_loader, testing_loader):
     
     cnn.eval()
 
-    print("creating MNAGO data ...")  
+    print("creating MANGO data ...")  
     
     img_num = 0	#used for naming new datapoints    
 
@@ -242,16 +214,17 @@ def train_loop2(training_loader, testing_loader):
                 all_labels.append(labels[index])
                 save_image(res, 'data/MANGO/' + test_id + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
                 img_num = img_num + 1
-        #temp = temp - 1
-        #if temp == 0:
-         #   break
-#    all_labels = torch.stack(all_labels)
- #   masked_imgs = torch.stack(masked_imgs)
+        # temp = temp - 1
+        # if temp == 0:
+        #    break
+    # all_labels = torch.stack(all_labels)
+    # masked_imgs = torch.stack(masked_imgs)
 
     print("starting retraining ...")
 
     cnn.train()
-############starting epochs
+
+    ############starting epochs
     for epoch in range(args.epochs):
         progress_bar.set_description('Epoch ' + str(epoch))
 
@@ -288,45 +261,30 @@ def train_loop2(training_loader, testing_loader):
             correct += (pred == batch_labels.data).sum().item()
             accuracy = correct / total
 
-            # THRESHOLD CHECK #
-            ###################
-
-#            if accuracy - prev_acc <= threshold:
- #               diff_counter += 1
-  #              if diff_counter == diff_limit:
-   #                 FLAG_THRESHOLD = True
-    #        else:
-     #           diff_counter = 0
-      #      prev_acc = accuracy
-
-
-            ###################
             progress_bar.set_postfix(
                 xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
                 acc='%.3f' % accuracy)
 
-    #    main_parts = find_main_part(test_loader)    ##Newwwwwwwww
+        # main_parts = find_main_part(test_loader)    ##Newwwwwwwww
  
         test_acc = test(testing_loader)
  
         tqdm.write('test_acc: %.3f' % (test_acc))
 
-#        scheduler.step(epoch)  # Use this line for PyTorch <1.4
-        scheduler.step()     # Use this line for PyTorch >=1.4
+        # scheduler.step(epoch)     # Use this line for PyTorch <1.4
+        scheduler.step()            # Use this line for PyTorch >=1.4
 
         row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)}
         MNG_csv_logger.writerow(row)
-#       if FLAG_THRESHOLD:
- #           break
 
     return
 
 
 
 def main():
-#    global model_options
-#    global dataset_options
- #   global parser 
+    # global model_options
+    # global dataset_options
+    # global parser 
     global test_id
     global scheduler
     global csv_logger
@@ -373,7 +331,6 @@ def main():
 
     args = parser.parse_args()
     
-
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     cudnn.benchmark = True  # Should make training should go faster for large models
 
@@ -394,11 +351,11 @@ def main():
                                         std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
 
 
-    ################testtttttttt
+    ################ testtttttttt
     _CIFAR_MEAN, _CIFAR_STD = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
     UA_normalize = transforms.Normalize(_CIFAR_MEAN, _CIFAR_STD)
 
-    #creating train/test transform
+    # creating train/test transform
     train_transform = transforms.Compose([])
 
     if args.data_augmentation:
@@ -414,10 +371,10 @@ def main():
     test_transform = transforms.Compose([
         transforms.ToTensor(), normalize])
 
-    #creating the dataset for normal train and test
+    # creating the dataset for normal train and test
     train_dataset, test_dataset, num_classes = creat_dataset(train_transform, test_transform, 'data/')
 
-    #creating data loaders
+    # creating data loaders
     # Data Loader (Input Pipeline)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                             batch_size=args.batch_size,
@@ -431,7 +388,7 @@ def main():
                                             pin_memory=True,
                                             num_workers=args.n_workers)
 
-    #creating the model
+    # creating the model
     if args.model == 'resnet18':
         cnn = ResNet18(num_classes=num_classes)
     elif args.model == 'wideresnet':
@@ -455,44 +412,44 @@ def main():
     filename = 'logs/' + test_id + '.csv'
     csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
 
-    ###simple testing and training loop
+    ### simple testing and training loop
     train_loop(train_loader, test_loader)
 
- #   torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
-  #  csv_logger.close()
+    # torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
+    # csv_logger.close()
 
     #################################################newwwwwwwwwwwwwwwwwww
     if args.mango:
-#        retrain_transform = transforms.Compose([])
+        # retrain_transform = transforms.Compose([])
 
- #       if args.data_augmentation:
-  #          retrain_transform.transforms.append(transforms.RandomCrop(32, padding=4))
-   #         retrain_transform.transforms.append(transforms.RandomHorizontalFlip())
+        # if args.data_augmentation:
+        #     retrain_transform.transforms.append(transforms.RandomCrop(32, padding=4))
+        #     retrain_transform.transforms.append(transforms.RandomHorizontalFlip())
 
-    #    if args.cutout:
-     #       retrain_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
+        # if args.cutout:
+        #     retrain_transform.transforms.append(Cutout(n_holes=args.n_holes, length=args.length))
 
-      #  retrain_transform.transforms.append(transforms.ToTensor())
-       # retrain_transform.transforms.append(normalize)
-        #retrain_transform.transforms.append(Mango(cnn))
+        # retrain_transform.transforms.append(transforms.ToTensor())
+        # retrain_transform.transforms.append(normalize)
+        # retrain_transform.transforms.append(Mango(cnn))
 
-        #retrain_dataset, test_dataset, num_classes = creat_dataset(retrain_transform, test_transform, 'data/MANGO')
+        # retrain_dataset, test_dataset, num_classes = creat_dataset(retrain_transform, test_transform, 'data/MANGO')
 
-        #retrain_loader = torch.utils.data.DataLoader(dataset=retrain_dataset,
-         #                                       batch_size=args.batch_size,###############????same?
-          #                                      shuffle=True,
-#                                                pin_memory=True,
-           #                                     num_workers=args.n_workers)
+        # retrain_loader = torch.utils.data.DataLoader(dataset=retrain_dataset,
+        #                                     batch_size=args.batch_size,###############????same?
+        #                                     shuffle=True,
+        #                                     pin_memory=True,
+        #                                     num_workers=args.n_workers)
 
         MNG_filename = 'logs/MANGO/' + test_id + '.csv'
         MNG_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=MNG_filename)
 
-#        train_loop(retrain_loader,test_loader, True)
+        # train_loop(retrain_loader,test_loader, True)
         train_loop2(train_loader, test_loader)
 
         torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
         MNG_csv_logger.close()
 
 if __name__ == '__main__':
-#    mp.set_start_method('spawn')
+    # mp.set_start_method('spawn')
     main()
