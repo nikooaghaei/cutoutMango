@@ -48,11 +48,11 @@ class Mango(object):
         self.root.prob = value
         self.root_label = index[0]
 
-        ####temporary testing ##to be removed
-        temp = nnf.softmax(pred, dim = 1)
-        for i in range(temp.size(1)):
-            if(self.root.prob == temp[0][i] and index[0] != i):
-                print("*")
+        ####temporary testing if prob for some classes can be equal##to be removed
+   #     temp = nnf.softmax(pred, dim = 1)
+  #      for i in range(temp.size(1)):
+ #           if(self.root.prob == temp[0][i] and index[0] != i):
+#                print("*")
             
         self.make_tree(self.root)
        
@@ -140,18 +140,19 @@ class Mango(object):
 
                 temp += 1
 
-        treshold = 1 + ((node.children[0].mask_loc[1] - node.children[0].mask_loc[0]) / (self.n_masks * h))  ##1+(mask_size/(img_size * n_masks))
+#        treshold = 1 + ((node.children[0].mask_loc[1] - node.children[0].mask_loc[0]) / (self.n_masks * h))  ##1+(mask_size/(img_size * n_masks))
 
-        if(node.children[0].mask_loc[1] > node.children[0].mask_loc[0] + 1 and node.children[0].prob < treshold * node.prob):    ####determining to what depth we go down => here is down to mask size = 1 pixel)
+ #       if(node.children[0].mask_loc[1] > node.children[0].mask_loc[0] + 1 and node.children[0].prob < treshold * node.prob):    ####determining to what depth we go down => here is down to mask size = 1 pixel)
                 ###as far as children are ordered, we only expand first if the condition is true
                 ###############later changes if you need more than one branch expansion
-            self.make_tree(node.children[0])
+  #          self.make_tree(node.children[0])
+   #     else:
+#        treshold = 1
+        if(node.children[0].prob < node.prob):  ##main is one pixel size mask
+            self.res = node.children[0]
         else:
-            if(node.children[0].prob < treshold * node.prob):  ##main is one pixel size mask
-                self.res = node.children[0]
-            else:
-                self.res = node
-            return
+            self.res = node
+        return
 
     def show_chain(self, folder_name):
         node = self.root
