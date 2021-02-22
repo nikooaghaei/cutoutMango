@@ -222,13 +222,17 @@ def train_loop2(training_loader, testing_loader):
     temp = 3
     
     cnn.eval()
-   
+
+    print("creating MNAGO data ...")  
+    
+    img_num = 0	#used for naming new datapoints    
+
     progress_bar = tqdm(training_loader)
     for i, (images, labels) in enumerate(progress_bar):
-
+  
         images = images.cuda()
         labels = labels.cuda()
-
+       
         for index in range(len(images)):
             with torch.no_grad():
                 mng = Mango(cnn)
@@ -236,22 +240,27 @@ def train_loop2(training_loader, testing_loader):
             if mng.res.mask_loc:       #if mask was not None (image has changed)
                 masked_imgs.append(res)
                 all_labels.append(labels[index])
-#        temp = temp - 1
- #       if temp == 0:
-  #          break
+                save_image(res, 'data/MANGO/' + test_id + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
+                img_num = img_num + 1
+        #temp = temp - 1
+        #if temp == 0:
+         #   break
 #    all_labels = torch.stack(all_labels)
  #   masked_imgs = torch.stack(masked_imgs)
+
+    print("starting retraining ...")
 
     cnn.train()
 ############starting epochs
     for epoch in range(args.epochs):
+        progress_bar.set_description('Epoch ' + str(epoch))
 
         xentropy_loss_avg = 0.
         correct = 0.
         total = 0.
 
-   #     prev_acc = 0
-        for k in range(0, len(masked_imgs), 128):
+        progress_bar = tqdm(range(0, len(masked_imgs), 128))
+        for k in (progress_bar):
             batch_imgs= []
             batch_labels = []
 
@@ -292,19 +301,15 @@ def train_loop2(training_loader, testing_loader):
 
 
             ###################
-#            progress_bar.set_postfix(
- #               xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
-  #              acc='%.3f' % accuracy)
+            progress_bar.set_postfix(
+                xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
+                acc='%.3f' % accuracy)
 
     #    main_parts = find_main_part(test_loader)    ##Newwwwwwwww
-        
-            print("xentropy=", '%.3f'% (xentropy_loss_avg / (i + 1)), "	  acc = ", '%.3f' % accuracy)
  
         test_acc = test(testing_loader)
-
-        print("test acc = ", '%.3f'% test_acc)
  
-        #tqdm.write('test_acc: %.3f' % (test_acc))
+        tqdm.write('test_acc: %.3f' % (test_acc))
 
 #        scheduler.step(epoch)  # Use this line for PyTorch <1.4
         scheduler.step()     # Use this line for PyTorch >=1.4
@@ -319,12 +324,13 @@ def train_loop2(training_loader, testing_loader):
 
 
 def main():
-    global model_options
-    global dataset_options
-    global parser 
+#    global model_options
+#    global dataset_options
+ #   global parser 
+    global test_id
+    global scheduler
     global csv_logger
     global MNG_csv_logger
-    global test_id
     global args
     global cnn
     global criterion
@@ -376,6 +382,8 @@ def main():
         torch.cuda.manual_seed(args.seed)
 
     test_id = args.dataset + '_' + args.model
+
+    print(args)
 
     # Image Preprocessing
     if args.dataset == 'svhn':
@@ -438,7 +446,6 @@ def main():
     criterion = nn.CrossEntropyLoss().cuda()
     cnn_optimizer = torch.optim.SGD(cnn.parameters(), lr=args.learning_rate,
                                     momentum=0.9, nesterov=True, weight_decay=5e-4)
-    global scheduler
 
     if args.dataset == 'svhn':
         scheduler = MultiStepLR(cnn_optimizer, milestones=[80, 120], gamma=0.1)
@@ -451,8 +458,8 @@ def main():
     ###simple testing and training loop
     train_loop(train_loader, test_loader)
 
-    torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
-    csv_logger.close()
+ #   torch.save(cnn.state_dict(), 'checkpoints/' + test_id + '.pt')
+  #  csv_logger.close()
 
     #################################################newwwwwwwwwwwwwwwwwww
     if args.mango:
