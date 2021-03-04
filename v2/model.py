@@ -8,6 +8,7 @@ from pathlib import Path
 import tqdm
 
 # TODO: Add continuing training
+# TODO: Fix all the -assert()
 
 class Net(nn.Module):
     def __init__(self):
@@ -30,7 +31,10 @@ class Net(nn.Module):
 
 def train_and_test(trainloader, testloader, PATH,  
                    num_of_epochs=2, save=False):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     net = Net()
+    net.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
@@ -40,7 +44,7 @@ def train_and_test(trainloader, testloader, PATH,
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
+            inputs, labels = data[0].to(device), data[1].to(device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -64,7 +68,7 @@ def train_and_test(trainloader, testloader, PATH,
     total = 0
     with torch.no_grad():
         for data in testloader:
-            images, labels = data
+            images, labels = data[0].to(device), data[1].to(device)
             outputs = net(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)

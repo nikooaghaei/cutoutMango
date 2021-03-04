@@ -8,8 +8,8 @@ from model import train_and_test, load_model
 # INITIAL DATA
 transform = transforms.Compose([transforms.ToTensor()])
 
-batch_size = 32
-num_of_epochs = 1
+batch_size = 16
+num_of_epochs = 100
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
