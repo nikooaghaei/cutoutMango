@@ -14,12 +14,9 @@ import pickle
 from time import time
 from pathlib import Path
 
-def load_from(path_images, path_labels):
-    with open(path_images, "rb") as fp:
-        images = pickle.load(fp)
-    with open(path_labels, "rb") as fp:
-        labels = pickle.load(fp)
-    return images, labels
+def load_from(path):
+    with open(path, "rb") as fp:
+        return pickle.load(fp)
 
 class Mango(object):
     """Mask out most important part of an image.

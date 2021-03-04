@@ -32,6 +32,7 @@ class Net(nn.Module):
 def train_and_test(trainloader, testloader, PATH,  
                    num_of_epochs=2, save=False):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Using", device)
 
     net = Net()
     net.to(device)
@@ -39,7 +40,7 @@ def train_and_test(trainloader, testloader, PATH,
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-    for epoch in tqdm.tqdm(range(num_of_epochs)): 
+    for epoch in range(num_of_epochs): 
         # print(trainloader.shape)
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):

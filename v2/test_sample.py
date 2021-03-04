@@ -9,7 +9,7 @@ from model import train_and_test, load_model
 transform = transforms.Compose([transforms.ToTensor()])
 
 batch_size = 16
-num_of_epochs = 100
+num_of_epochs = 10
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
@@ -34,7 +34,9 @@ new_train = mango.create_dataset()
 mango = Mango(model, testloader, folder_name='t_test')
 new_test = mango.create_dataset()
 # Uncomment if need to load from file:
-# new_train = load_from("data/MANGO/t_test/maskD.txt")
+# new_test = load_from("data/MANGO/t_test/maskD.txt")
+
+print("# "*20, "\nDONE WITH SAVINGS...\n", "# "*20)
 
 new_trainloader = torch.utils.data.DataLoader(new_train, batch_size=batch_size,
                                           shuffle=True, num_workers=2)
