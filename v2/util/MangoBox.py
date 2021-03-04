@@ -41,6 +41,8 @@ class Mango(object):
         self.folder_name = folder_name
         self.path = "data/MANGO/" + folder_name
 
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     def _run_masking(self, root_img):
         """
         Args:
@@ -50,11 +52,9 @@ class Mango(object):
         """
         self.root = Tree(root_img)
     
-        # TODO: Fix the pred - PRIO
-        # RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same
-        # Adding .cuda or .to(device) somewhere should solve 
         with torch.no_grad(): 
-            pred = self.model(self.root.data.view(1,3,32,32))
+            image = self.root.data.view(1,3,32,32).to(self.device)
+            pred = self.model(image).to(self.device)
     
         value, index = nnf.softmax(pred, dim = 1).max(1)
         self.root.prob = value
@@ -118,7 +118,8 @@ class Mango(object):
 
                 # building child probability
                 with torch.no_grad():
-                    pred = self.model(child_data.view(1,3,32,32))
+                    img = child_data.view(1,3,32,32).to(self.device)
+                    pred = self.model(img).to(self.device)
                 softmax_prob = nnf.softmax(pred, dim = 1)
 
                 # adding new child to tree

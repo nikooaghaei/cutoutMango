@@ -1,3 +1,4 @@
+from numpy.lib import type_check
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -51,7 +52,7 @@ def train_and_test(trainloader, testloader, PATH,
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = net(inputs)
+            outputs = net(inputs).to(device)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
