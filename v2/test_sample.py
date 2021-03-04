@@ -8,18 +8,18 @@ from model import train_and_test, load_model
 # INITIAL DATA
 transform = transforms.Compose([transforms.ToTensor()])
 
-batch_size = 4
+batch_size = 32
 num_of_epochs = 1
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                          shuffle=True, num_workers=0)
+                                          shuffle=True, num_workers=2)
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
-                                         shuffle=False, num_workers=0)
+                                         shuffle=False, num_workers=2)
 
 model = train_and_test(trainloader, testloader, "vanilla_model.pt",
                        num_of_epochs, save=True)
@@ -37,9 +37,9 @@ new_test = mango.create_dataset()
 # new_train = load_from("data/MANGO/t_test/maskD.txt")
 
 new_trainloader = torch.utils.data.DataLoader(new_train, batch_size=batch_size,
-                                          shuffle=True, num_workers=0)
+                                          shuffle=True, num_workers=2)
 new_testloader = torch.utils.data.DataLoader(new_test, batch_size=batch_size,
-                                         shuffle=False, num_workers=0)
+                                         shuffle=False, num_workers=2)
 
 model = train_and_test(new_trainloader, new_testloader, "mango_model.pt",
                        num_of_epochs, True)
