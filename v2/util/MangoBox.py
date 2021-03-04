@@ -50,6 +50,9 @@ class Mango(object):
         """
         self.root = Tree(root_img)
     
+        # TODO: Fix the pred - PRIO
+        # RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same
+        # Adding .cuda or .to(device) somewhere should solve 
         with torch.no_grad(): 
             pred = self.model(self.root.data.view(1,3,32,32))
     
