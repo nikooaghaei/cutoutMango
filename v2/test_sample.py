@@ -36,7 +36,7 @@ new_test = mango.create_dataset()
 # Uncomment if need to load from file:
 # new_test = load_from("data/MANGO/t_test/maskD.txt")
 
-print("# "*20, "\nDONE WITH SAVINGS...\n", "# "*20)
+print("#"*20, "\nDONE WITH SAVINGS...\n", "#"*20)
 
 new_trainloader = torch.utils.data.DataLoader(new_train, batch_size=batch_size,
                                           shuffle=True, num_workers=2)

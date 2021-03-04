@@ -6,10 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from pathlib import Path
-import tqdm
 
-# TODO: Add continuing training
-# TODO: Fix all the -assert()
 
 class Net(nn.Module):
     def __init__(self):

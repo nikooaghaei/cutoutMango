@@ -1,0 +1,18 @@
+Please try to complete following:
+    Experiments:
+        - Test the code on the simple network, with and 
+        without masking
+        - Test masking with fixed threshold
+        - Add a larger network
+    Code:
+    (Rating indicated importance level (/5))
+        - 5/ Add functionality to both the model and the MANGO to
+        be able to continue training from a given checkpoint
+        (save checkpoints)
+        - 1/ Fix assert warnings. Make sure the code does not run
+        if it's going to fail in an upcoming phase
+        - 2/ Add tqdm and print out the interesting results such
+        as training accuracy, testing accuracy etc.
+        - 1/ Fix the comments on the MANGO, describe each function
+        remove unnecessary ones
+        - 3/ Check the masking functionality
