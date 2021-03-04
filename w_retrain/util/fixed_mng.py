@@ -25,48 +25,82 @@ class Fixed_MNG(object):
         # print("start")
         h = img.size(1)
         w = img.size(2)
-
-        masks = np.ones((self.n_masks, h, w), np.float32)
+        mask_len = self.length
 
         y1 = np.clip(0, 0, h)
-        y2 = np.clip(self.length, 0, h)
+        y2 = np.clip(mask_len, 0, h)
         y3 = np.clip(h, 0, h)
         x1 = np.clip(0, 0, w)
         x2 = np.clip(self.length, 0, w)
         x3 = np.clip(w, 0, w)
-        
-        masks[0][y1: y2, x1: x2] = 0.   ########or any other colors for mask
-        masks[1][y1: y2, x2: x3] = 0.
-        masks[2][y2: y3, x1: x2] = 0.
-        masks[3][y2: y3, x2: x3] = 0.
-
-        masks = torch.from_numpy(masks)
 
         with torch.no_grad(): 
             pred = self.model(img.view(1,3,32,32))
-    
+        
         value, index = nnf.softmax(pred, dim = 1).max(1)
         
         min_prob = value
         label = index[0]
         res = img
-        # print("before loop")
-        # print("before pred1")
-        for mask in masks:
-            mask = mask.expand_as(img)
-            masked_img = img * mask.cuda()
+        while(mask_len > 0):    ####change to decide how deep to go
 
+
+            masks = np.ones((self.n_masks, h, w), np.float32)
             
-            #####building child probability
-            with torch.no_grad():
-                pred = self.model(masked_img.view(1,3,32,32))
-            # print("2")
-            softmax_prob = nnf.softmax(pred, dim = 1)
-            # print("3")
-            prob = softmax_prob[0][label]
+            masks[0][y1: y2, x1: x2] = 0.   ########or any other colors for mask
+            masks[1][y1: y2, x2: x3] = 0.
+            masks[2][y2: y3, x1: x2] = 0.
+            masks[3][y2: y3, x2: x3] = 0.
 
-            if prob < min_prob: ######treshold comes here
-                min_prob = prob ###??pointer
-                res = masked_img
-        # print("end")
-        return res
+            masks = torch.from_numpy(masks)
+
+            expanding_node = -1     ###referring to original img
+            
+            for m in range(len(masks)):
+                masks[m] = masks[m].expand_as(img)
+                masked_img = img * masks[m].cuda()
+
+                #####building child probability
+                with torch.no_grad():
+                    pred = self.model(masked_img.view(1,3,32,32))
+
+                softmax_prob = nnf.softmax(pred, dim = 1)
+                prob = softmax_prob[0][label]
+
+                if prob < min_prob: ######treshold comes here
+                    min_prob = prob ###??pointer
+                    expanding_node = m
+                    res = masked_img
+
+            if expanding_node == -1:
+                return res
+            elif expanding_node == 0:
+                y1 = np.clip(y1, 0, y1)
+                y2 = np.clip(y1 + mask_len, 0, y2)
+                y3 = np.clip(y2, 0, y2)
+                x1 = np.clip(x1, 0, x1)
+                x2 = np.clip(x1+mask_len, 0, x2)
+                x3 = np.clip(x2, 0, x2)
+            elif expanding_node == 1:
+                y1 = np.clip(y1, 0, y1)
+                y2 = np.clip(y1 + mask_len, 0, y2)
+                y3 = np.clip(y2, 0, y2)
+                x1 = np.clip(x2, 0, x2)
+                x2 = np.clip(x2+mask_len, 0, x3)
+                x3 = np.clip(x3, 0, x3)
+            elif expanding_node == 2:
+                y1 = np.clip(y2, 0, y2)
+                y2 = np.clip(y2 + mask_len, 0, y3)
+                y3 = np.clip(y3, 0, y3)
+                x1 = np.clip(x1, 0, x1)
+                x2 = np.clip(x1+mask_len, 0, x2)
+                x3 = np.clip(x2, 0, x2)
+            elif expanding_node == 3:
+                y1 = np.clip(y2, 0, y2)
+                y2 = np.clip(y2 + mask_len, 0, y3)
+                y3 = np.clip(y3, 0, y3)
+                x1 = np.clip(x2, 0, x2)
+                x2 = np.clip(x2+mask_len, 0, x3)
+                x3 = np.clip(x3, 0, x3)
+
+            mask_len = mask_len//2

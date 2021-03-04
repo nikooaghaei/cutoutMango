@@ -55,8 +55,8 @@ def find_main_part(loader):######newwwwwwwwww
     cnn.train() #####???
     return main_nodes
 
-def test(loader):
-    cnn.eval()    # Change model to 'eval' mode (BN uses moving mean/var).
+def test(loader, model):
+    model.eval()    # Change model to 'eval' mode (BN uses moving mean/var).
     correct = 0.
     total = 0.
     for images, labels in loader:
@@ -64,14 +64,14 @@ def test(loader):
         labels = labels.cuda()
         
         with torch.no_grad():
-            pred = cnn(images)
+            pred = model(images)
 
         pred = torch.max(pred.data, 1)[1]
         total += labels.size(0)
         correct += (pred == labels).sum().item()
 
     val_acc = correct / total
-    cnn.train()
+    model.train()
     return val_acc
 
 ########################################new
@@ -124,7 +124,7 @@ def creat_dataset(training_transform, testing_transform, root):
     return training_dataset, testing_dataset, num_classes
 
 #################################fixed
-def train_fixed(training_loader, testing_loader):
+def train_1phase(training_loader, testing_loader):   #having just one phase and in each batch we apply mango AGAIN and create new data and train on it. Whether imgs have or have not mask will be added as it's the only phase of training.
     for epoch in range(args.epochs):
 
        	xentropy_loss_avg = 0.
@@ -133,99 +133,28 @@ def train_fixed(training_loader, testing_loader):
         progress_bar = tqdm(training_loader)
         for i, (images, labels) in enumerate(progress_bar):   
             progress_bar.set_description('Epoch ' + str(epoch))
-            print("start")
             images = images.cuda()
             labels = labels.cuda()
 
-            # cnn.eval()
-  
-            # mng_imgs=[]
-            # img_num = 0
-            # for index in range(len(images)):
-            #     # mng = Fixed_MNG(length = args.length, model = cnn)
-            #     mng = Cutout(length = args.length, model = cnn)
-            #     res = mng(images[index])
-            #     if (epoch == 0 or epoch == 199) and i == 0:
-            #         save_image(res, 'data/fixed_mng/' + test_id + '/epoch' + str(epoch) + '/batch' + str(i) + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
-            #     img_num = img_num +1
-            #     mng_imgs.append(res)
-
-            # mng_imgs = torch.stack(mng_imgs)
-            # print("end")
-            # cnn.train()
-
-            cnn.zero_grad()
-            # pred = cnn(mng_imgs)
-            # print("after pred")
-            # else:
-            pred = cnn(images)
-
-            xentropy_loss = criterion(pred, labels)
-            xentropy_loss.backward()
-            cnn_optimizer.step()
-
-            xentropy_loss_avg += xentropy_loss.item()
-
-            # Calculate running average of accuracy
-            pred = torch.max(pred.data, 1)[1]
-            total += labels.size(0)
-            correct += (pred == labels.data).sum().item()
-            accuracy = correct / total
-        
-            progress_bar.set_postfix(
-                xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
-                acc='%.3f' % accuracy)
-
-        # main_parts = find_main_part(test_loader)    ##Newwwwwwwww
-        test_acc = test(testing_loader)  
-        tqdm.write('test_acc: %.3f' % (test_acc))  
-
-        # scheduler.step(epoch)  # Use this line for PyTorch <1.4
-        scheduler.step()     # Use this line for PyTorch >=1.4
-
-        row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
-        csv_logger.writerow(row)
-    return
-
-########################################new
-def train_loop(training_loader, testing_loader):
-    for epoch in range(args.epochs):
-
-       	xentropy_loss_avg = 0.
-        correct = 0.
-        total = 0.
-
-        progress_bar = tqdm(training_loader)
-        for i, (images, labels) in enumerate(progress_bar):   
-            progress_bar.set_description('Epoch ' + str(epoch))
-
-            images = images.cuda()
-            labels = labels.cuda()
-
-            # print("start")
-
-            # if sec_run:
-
-            # print("Creating MANGO data..")
             cnn.eval()
   
             mng_imgs=[]
             img_num = 0
             for index in range(len(images)):
-                mng = Mango(cnn)
+                mng = Fixed_MNG(length = args.length, model = cnn)
                 res = mng(images[index])
-            #         if mng.res.mask_loc:	#if mask was not None (image has changed)
+                # mng = Cutout(length = args.length, model = cnn)
                 if (epoch == 0 or epoch == 199) and i == 390:
-                    save_image(res, 'data/MANGO/' + test_id + '/epoch' + str(epoch) + '/batch' + str(i) + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
+                    save_image(res, 'data/fixed_mng/' + test_id + '/epoch' + str(epoch) + '/batch' + str(i) + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
                 img_num = img_num +1
                 mng_imgs.append(res)
 
             mng_imgs = torch.stack(mng_imgs)
-            
             cnn.train()
 
             cnn.zero_grad()
             pred = cnn(mng_imgs)
+            # print("after pred")
             # else:
             # pred = cnn(images)
 
@@ -246,8 +175,78 @@ def train_loop(training_loader, testing_loader):
                 acc='%.3f' % accuracy)
 
         # main_parts = find_main_part(test_loader)    ##Newwwwwwwww
-        # print("before test")
         test_acc = test(testing_loader)  
+        tqdm.write('test_acc: %.3f' % (test_acc))  
+
+        # scheduler.step(epoch)  # Use this line for PyTorch <1.4
+        scheduler.step()     # Use this line for PyTorch >=1.4
+
+        row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
+        csv_logger.writerow(row)
+    return
+
+########################################new
+def train_loop(training_loader, testing_loader):    ##normal first phase of training wo mango applied on data
+
+    for epoch in range(args.epochs):
+
+       	xentropy_loss_avg = 0.
+        correct = 0.
+        total = 0.
+
+        progress_bar = tqdm(training_loader)
+        for i, (images, labels) in enumerate(progress_bar):   
+            progress_bar.set_description('Epoch ' + str(epoch))
+
+            images = images.cuda()
+            labels = labels.cuda()
+
+            # print("start")
+
+            # if sec_run:
+
+            # print("Creating MANGO data..")
+            # cnn.eval()
+  
+            # mng_imgs=[]
+            # img_num = 0
+            # for index in range(len(images)):
+            #     mng = Mango(cnn)
+            #     res = mng(images[index])
+            # #         if mng.res.mask_loc:	#if mask was not None (image has changed)
+            #     if (epoch == 0 or epoch == 199) and i == 390:
+            #         save_image(res, 'data/MANGO/' + test_id + '/epoch' + str(epoch) + '/batch' + str(i) + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
+            #     img_num = img_num +1
+            #     mng_imgs.append(res)
+
+            # mng_imgs = torch.stack(mng_imgs)
+            
+            # cnn.train()
+
+            cnn.zero_grad()
+            # pred = cnn(mng_imgs)
+            # else:
+            pred = cnn(images)
+
+            xentropy_loss = criterion(pred, labels)
+            xentropy_loss.backward()
+            cnn_optimizer.step()
+
+            xentropy_loss_avg += xentropy_loss.item()
+
+            # Calculate running average of accuracy
+            pred = torch.max(pred.data, 1)[1]
+            total += labels.size(0)
+            correct += (pred == labels.data).sum().item()
+            accuracy = correct / total
+        
+            progress_bar.set_postfix(
+                xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
+                acc='%.3f' % accuracy)
+
+        # main_parts = find_main_part(test_loader)    ##Newwwwwwwww
+        # print("before test")
+        test_acc = test(testing_loader, cnn)  
         # print("after test")
         tqdm.write('test_acc: %.3f' % (test_acc))  
 
@@ -259,7 +258,7 @@ def train_loop(training_loader, testing_loader):
     return
 
 ########################################new
-def train_loop2(training_loader, testing_loader):
+def train_loop2(training_loader, testing_loader):   ##second phase of training with first applying mango and creating new data and then retrain on JUST(those imgs wo any mask are not added to new data) new data.
 
     ##############creating new data
     masked_imgs=[]
@@ -286,11 +285,11 @@ def train_loop2(training_loader, testing_loader):
             if mng.res.mask_loc:       #if mask was not None (image has changed)
                 masked_imgs.append(res)
                 all_labels.append(labels[index])
-                save_image(res, 'data/MANGO/' + test_id + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
+                save_image(res, 'data/MANGO2/' + test_id + '/' + str(img_num) + '_label' + str(labels[index].item()) + '.png')
                 img_num = img_num + 1
         # temp = temp - 1
         # if temp == 0:
-        #    break
+        # break
     # all_labels = torch.stack(all_labels)
     # masked_imgs = torch.stack(masked_imgs)
 
@@ -305,6 +304,7 @@ def train_loop2(training_loader, testing_loader):
         xentropy_loss_avg = 0.
         correct = 0.
         total = 0.
+        i = 0
 
         progress_bar = tqdm(range(0, len(masked_imgs), 128))
         for k in (progress_bar):
@@ -338,6 +338,7 @@ def train_loop2(training_loader, testing_loader):
             progress_bar.set_postfix(
                 xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
                 acc='%.3f' % accuracy)
+            i = i+1
 
         # main_parts = find_main_part(test_loader)    ##Newwwwwwwww
  
@@ -353,7 +354,147 @@ def train_loop2(training_loader, testing_loader):
 
     return
 
+########################################
+def train_reset(training_loader, testing_loader):   ##second phase of training with first applying mango and creating new data and then train on it. Whether imgs have or have not mask will be added as we gonna have a totally new not pretrained model.
+    ##############creating new data
+    mng_imgs=[]
+    all_labels= []
+   
+    temp = 3
+    
+    cnn.eval()
 
+    print("creating MANGO data ...")  
+    
+    img_num = 0	#used for naming new datapoints    
+
+    progress_bar = tqdm(training_loader)
+    for i, (images, labels) in enumerate(progress_bar):
+  
+        images = images.cuda()
+        labels = labels.cuda()
+       
+        for index in range(len(images)):
+
+            mng_imgs.append(images[index])
+            all_labels.append(labels[index])
+
+            with torch.no_grad():
+                mng = Mango(cnn)
+                res = mng(images[index])
+            if mng.res.mask_loc:       #if mask was not None (image has changed)
+                mng_imgs.append(res)
+                all_labels.append(labels[index])
+                save_image(res, 'data/MANGO2/' + test_id + '/' str(img_num) + '_label' + str(labels[index].item()) + '.png')
+                img_num = img_num + 1        
+                # temp = temp - 1
+        # if temp == 0:
+        # break
+    cnn.train()
+    print(len(mng_imgs))
+
+    # creating the model
+    # if args.model == 'resnet18':
+    # cnn2 = ResNet18(num_classes=10)
+    # elif args.model == 'wideresnet':
+    #     if args.dataset == 'svhn':
+    #         cnn2 = WideResNet(depth=16, num_classes=10, widen_factor=8,
+    #                         dropRate=0.4)
+    #     else:
+    #         cnn2 = WideResNet(depth=28, num_classes=100, widen_factor=10,
+    #                         dropRate=0.3)
+    cnn2 = WideResNet(depth=28, num_classes=100, widen_factor=10, dropRate=0.3)
+    cnn2 = cnn2.cuda()
+    criterion2 = nn.CrossEntropyLoss().cuda()
+    cnn2_optimizer = torch.optim.SGD(cnn2.parameters(), lr=args.learning_rate,
+                                    momentum=0.9, nesterov=True, weight_decay=5e-4)
+
+    if args.dataset == 'svhn':
+        scheduler2 = MultiStepLR(cnn2_optimizer, milestones=[80, 120], gamma=0.1)
+    else:
+        scheduler2 = MultiStepLR(cnn2_optimizer, milestones=[60, 120, 160], gamma=0.2)
+
+    print("starting training again..")
+    for epoch in range(args.epochs):
+        progress_bar.set_description('Epoch ' + str(epoch))
+
+       	xentropy_loss_avg = 0.
+        correct = 0.
+        total = 0.
+
+        i = 0
+
+    #     progress_bar = tqdm(training_loader)
+    #     for i, (images, labels) in enumerate(progress_bar):   
+    #         progress_bar.set_description('Epoch ' + str(epoch))
+
+    #         images = images.cuda()
+    #         labels = labels.cuda()
+
+    #         cnn2.zero_grad()
+    #         pred = cnn2(images)
+
+    #         xentropy_loss = criterion2(pred, labels)
+    #         xentropy_loss.backward()
+    #         cnn2_optimizer.step()
+
+    #         xentropy_loss_avg += xentropy_loss.item()
+
+    #         # Calculate running average of accuracy
+    #         pred = torch.max(pred.data, 1)[1]
+    #         total += labels.size(0)
+    #         correct += (pred == labels.data).sum().item()
+    #         accuracy = correct / total
+        
+    #         progress_bar.set_postfix(
+    #             xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
+    #             acc='%.3f' % accuracy)
+
+        ###########training part2
+        progress_bar = tqdm(range(0, len(mng_imgs), 128))
+        progress_bar.set_description('Epoch ' + str(epoch))
+        for k in (progress_bar):
+            batch_imgs= []
+            batch_labels = []
+
+            for j in range(k, k+128):
+                if j >= len(mng_imgs):
+                    break
+                batch_imgs.append(mng_imgs[j])
+                batch_labels.append(all_labels[j])
+
+            batch_imgs = torch.stack(batch_imgs)
+            batch_labels = torch.stack(batch_labels)
+
+            cnn2.zero_grad()
+            pred = cnn2(batch_imgs)
+
+            xentropy_loss = criterion2(pred, batch_labels)
+            xentropy_loss.backward()
+            cnn2_optimizer.step()
+
+            xentropy_loss_avg += xentropy_loss.item()
+
+            # Calculate running average of accuracy
+            pred = torch.max(pred.data, 1)[1]
+            total += batch_labels.size(0)
+            correct += (pred == batch_labels.data).sum().item()
+            accuracy = correct / total
+
+            progress_bar.set_postfix(
+                xentropy='%.3f' % (xentropy_loss_avg / (i + 1)),
+                acc='%.3f' % accuracy)
+            i = i + 1
+    
+        test_acc = test(testing_loader, cnn2)  
+        tqdm.write('test_acc: %.3f' % (test_acc))  
+
+        # scheduler.step(epoch)  # Use this line for PyTorch <1.4
+        scheduler.step()     # Use this line for PyTorch >=1.4
+
+        row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
+        MNG_csv_logger.writerow(row)
+    return
 
 def main():
     # global model_options
@@ -401,7 +542,7 @@ def main():
                         help='default: default values with no retraining')
     parser.add_argument('--n_workers', type=int, default=2,
 			help='number of workers')
-
+    parser.add_argument('--file_name', type=str, default='')
 
     args = parser.parse_args()
     
@@ -484,14 +625,14 @@ def main():
     else:
         scheduler = MultiStepLR(cnn_optimizer, milestones=[60, 120, 160], gamma=0.2)
 
-    filename = 'logs/fixed_mng' + test_id + '.csv'
+    filename = 'logs/' + "oneloop-" +args.file_name + test_id + '.csv'
     csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
 
 
     ### simple testing and training loop
-    train_fixed(train_loader, test_loader)
+    train_loop(train_loader, test_loader)
 
-    torch.save(cnn.state_dict(), 'checkpoints/fixed_mng' + test_id + '.pt')
+    torch.save(cnn.state_dict(), 'checkpoints/' + "oneloop-" + args.file_name + test_id + '.pt')
     csv_logger.close()
 
     #################################################newwwwwwwwwwwwwwwwwww
@@ -517,13 +658,13 @@ def main():
         #                                     pin_memory=True,
         #                                     num_workers=args.n_workers)
 
-        MNG_filename = 'logs/MANGO/' + test_id + '.csv'
+        MNG_filename = 'logs/MANGO/' + "oneloop-" + args.file_name + test_id + '.csv'
         MNG_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=MNG_filename)
 
         # train_loop(retrain_loader,test_loader, True)
-        train_loop2(train_loader, test_loader)
+        train_reset(train_loader, test_loader)
 
-        torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + test_id + '.pt')
+        torch.save(cnn.state_dict(), 'checkpoints/MANGO/' + "oneloop-" + args.file_name + test_id + '.pt')
         MNG_csv_logger.close()
 
 if __name__ == '__main__':
