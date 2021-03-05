@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 
 from util.MangoBox import Mango, load_from
 from model import train_and_test, load_model
+from model_VGG import modelVGG
 
 # INITIAL DATA
 transform = transforms.Compose([transforms.ToTensor()])
@@ -20,11 +21,14 @@ testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=True, transform=transform)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                          shuffle=False, num_workers=2)
+
+
 # test_id = "log1"
 # filename = 'logs/' + test_id + '.csv'
 # csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
-model = train_and_test(trainloader, testloader, "vanilla_model.pt",
-                       num_of_epochs, save=True)
+model = modelVGG(trainset, testset)
+# model = train_and_test(trainloader, testloader, "vanilla_model.pt",
+#                        num_of_epochs, save=True)
 # Uncomment if need to load from file:
 # model = load_model("vanilla_model.pt")
 
@@ -41,6 +45,7 @@ new_trainloader = torch.utils.data.DataLoader(new_train, batch_size=batch_size,
 # test_id = "log2"
 # filename = 'logs/' + test_id + '.csv'
 # csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
-model = train_and_test(new_trainloader, testloader, "mango_model.pt",
-                       num_of_epochs, True)
+model = modelVGG(trainset, testset)
+# model = train_and_test(new_trainloader, testloader, "mango_model.pt",
+#                        num_of_epochs, True)
 
