@@ -7,7 +7,17 @@ from model import train_and_test, load_model
 from model_VGG import modelVGG
 
 # INITIAL DATA
-transform = transforms.Compose([transforms.ToTensor()])
+# transform used on Pytorch tutorial
+# transform = transforms.Compose([transforms.ToTensor()])
+
+# # transform used on VGG code  
+transform = transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean = [ 0.485, 0.456, 0.406 ],
+                             std  = [ 0.229, 0.224, 0.225 ]),
+        ])
 
 batch_size = 16
 num_of_epochs = 150
