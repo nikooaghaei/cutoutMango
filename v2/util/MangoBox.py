@@ -7,9 +7,11 @@ from util.tree import Tree
 
 from torch.utils.data import Dataset
 
+from torchvision.utils import save_image
+
 from PIL import Image
 import os
-import tqdm
+from tqdm import tqdm
 import pickle
 from time import time
 from pathlib import Path
@@ -37,6 +39,7 @@ class Mango(object):
         self.root = None # ??
         self.root_label = None # ??
         # self.treshold = 1
+        self.res = None #variable to keep main node of root's tree (by calling make_tree func)
         
         self.folder_name = folder_name
         self.path = "data/MANGO/" + folder_name
@@ -60,9 +63,9 @@ class Mango(object):
         self.root.prob = value
         self.root_label = index[0]
 
-        res = self._make_tree(self.root)
+        self._make_tree(self.root)
 
-        return res.data, res.mask_loc
+        return self.res.data, self.res.mask_loc
 
     def _make_tree(self, node):
         """
@@ -129,9 +132,21 @@ class Mango(object):
 
                 temp += 1
 
-        if(node.children[0].prob < node.prob):
-            return node.children[0]
-        return node
+        treshold = 1 + ((node.children[0].mask_loc[1] - node.children[0].mask_loc[0]) / (self.n_masks * h))
+                # 1+(mask_size/(img_size * n_masks))
+
+        if(node.children[0].mask_loc[1] > node.children[0].mask_loc[0] + 1 and 
+            node.children[0].prob < treshold * node.prob):    
+            # determining to what depth we go down => here is down to mask size = 1 pixel
+            self._make_tree(node.children[0])
+            # as far as children are ordered, we only expand first if the condition is true
+            # later changes if you need more than one branch expansion
+        else:
+            if(node.children[0].prob < treshold * node.prob):  ##main is one pixel size mask
+                self.res = node.children[0]
+            else:
+                self.res = node
+            return
 
     def _show_chain(self, folder_name):
         '''
@@ -159,20 +174,30 @@ class Mango(object):
         '''
         print("Beginnnig data processing...")
         self.model.eval()
+        original_data = []
+        original_label = []
         masked_data = [] 
         masked_labels = []
 
-        for (images, labels) in tqdm.tqdm(self.data):
+        for (images, labels) in tqdm(self.data):
             # for each batch
             # [(img_1, lbl_1), (img_2, lbl_2), ...]
             for img, lbl in zip(images, labels):
+                original_data.append(img)   #TODO
+                original_label.append(lbl)
                 with torch.no_grad():
-                    masked_img, if_masked = self._run_masking(img)
-                    if if_masked:
+                    masked_img, mask = self._run_masking(img)
+                   
+                    with open('mask_loc.txt', 'a') as f:
+                        print(mask, file=f)
+                    
+                    if mask:
                         masked_data.append(masked_img)
                         masked_labels.append(lbl)
-
-        maskD = maskedDataset(masked_data, masked_labels)
+        
+        # masked_data.extend(original_data)  
+        maskD = maskedDataset((original_data + masked_data), (original_label + masked_labels))
+        
         # create data/MANGO folder if needed
         print(self.path, "created...")
         Path(self.path).mkdir(parents=True, exist_ok=True)

@@ -7,16 +7,17 @@ import torch.optim as optim
 
 from pathlib import Path
 
+from tqdm import tqdm
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.conv1 = nn.Conv2d(3, 12, 5)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.conv2 = nn.Conv2d(12, 16, 5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 10)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -36,14 +37,18 @@ def train_and_test(trainloader, testloader, PATH,
     net.to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.9)
 
     for epoch in range(num_of_epochs): 
-        # print(trainloader.shape)
         running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
+        correct = 0.0
+        total = 0.0
+
+        progress_bar = tqdm(trainloader)
+        for i, (inputs, labels) in enumerate(progress_bar, 0):
+            progress_bar.set_description('Epoch ' + str(epoch + 1))
             # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data[0].to(device), data[1].to(device)
+            inputs, labels = inputs.to(device), labels.to(device)
 
             # zero the parameter gradients
             optimizer.zero_grad()
@@ -54,27 +59,31 @@ def train_and_test(trainloader, testloader, PATH,
             loss.backward()
             optimizer.step()
 
-            # print statistics
-            running_loss += loss.item()
-            if i % 2000 == 1999:    # print every 2000 mini-batches
-                print('[%d, %5d] loss: %.3f' %
-                    (epoch + 1, i + 1, running_loss / 2000))
-                running_loss = 0.0
-
-    print('Finished Training')
-
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for data in testloader:
-            images, labels = data[0].to(device), data[1].to(device)
-            outputs = net(images)
-            _, predicted = torch.max(outputs.data, 1)
+            # Calculate running average of accuracy and loss
+            outputs = torch.max(outputs.data, 1)[1]
             total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            correct += (outputs == labels.data).sum().item()
+            accuracy = correct / total
 
-    print('Accuracy of the network on the 10000 test images: %d %%' % (
-        100 * correct / total))
+            running_loss += loss.item()
+
+            # print statistics
+            progress_bar.set_postfix(
+                loss='%.3f' % (running_loss / (i + 1)),
+                acc='%.3f' % accuracy)
+
+        correct = 0.
+        total = 0.
+        net.eval()
+        with torch.no_grad():
+            for data in testloader:
+                images, labels = data[0].to(device), data[1].to(device)
+                outputs = net(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+        tqdm.write('test_acc: %.3f' % (100 * correct / total))
+        net.train()
 
     if save:
         assert(PATH is None, "PATH is None not allowed, \
@@ -85,6 +94,9 @@ def train_and_test(trainloader, testloader, PATH,
         print("models/ created...")
         Path("models/").mkdir(parents=True, exist_ok=True)
         torch.save(net.state_dict(), "models/" + PATH)
+
+    # row = {'epoch': str(epoch), 'train_acc': str(accuracy), 'test_acc': str(test_acc)} 
+    # csv_logger.writerow(row)
 
     return net
 
