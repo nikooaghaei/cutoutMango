@@ -3,7 +3,7 @@ import torch.nn.functional as nnf
 import numpy as np
 
 
-class Fixed_MNG(object):
+class Non_rec_MNG(object):
     """mask out one or more patches from an image.
 
     Args:
@@ -13,7 +13,7 @@ class Fixed_MNG(object):
         self.model = model
         self.n_masks = n_masks
         #self.treshold = 1 ##########################TO BE SET??????
-        self.length = length
+        self.init_length = length
 
     def __call__(self, img):
         """
@@ -25,13 +25,13 @@ class Fixed_MNG(object):
         # print("start")
         h = img.size(1)
         w = img.size(2)
-        mask_len = self.length
+        mask_len = self.init_length
 
         y1 = np.clip(0, 0, h)
         y2 = np.clip(mask_len, 0, h)
         y3 = np.clip(h, 0, h)
         x1 = np.clip(0, 0, w)
-        x2 = np.clip(self.length, 0, w)
+        x2 = np.clip(mask_len, 0, w)
         x3 = np.clip(w, 0, w)
 
         with torch.no_grad(): 
@@ -56,9 +56,9 @@ class Fixed_MNG(object):
 
             expanding_node = -1     ###referring to original img
             
-            for m in range(len(masks)):
-                masks[m] = masks[m].expand_as(img)
-                masked_img = img * masks[m].cuda()
+            for m, mask in enumerate(masks):
+                mask = mask.expand_as(img)
+                masked_img = img * mask.cuda()
 
                 #####building child probability
                 with torch.no_grad():
@@ -73,6 +73,8 @@ class Fixed_MNG(object):
                     res = masked_img
 
             if expanding_node == -1:
+                with open('mask_loc.txt', 'a') as f:
+                    print((mask_len * 2) % h, file=f)
                 return res
             elif expanding_node == 0:
                 y1 = np.clip(y1, 0, y1)
