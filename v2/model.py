@@ -45,7 +45,7 @@ def train_and_test(trainloader, testloader, PATH,
         total = 0.0
 
         progress_bar = tqdm(trainloader)
-        for i, (inputs, labels) in enumerate(progress_bar, 0):
+        for i, (inputs, labels) in enumerate(progress_bar):
             progress_bar.set_description('Epoch ' + str(epoch + 1))
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = inputs.to(device), labels.to(device)

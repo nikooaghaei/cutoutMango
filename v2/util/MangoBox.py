@@ -57,6 +57,7 @@ class Mango(object):
     
         with torch.no_grad(): 
             image = self.root.data.view(1,3,32,32).to(self.device)
+            print(type(self.model))
             pred = self.model(image).to(self.device)
     
         value, index = nnf.softmax(pred, dim = 1).max(1)

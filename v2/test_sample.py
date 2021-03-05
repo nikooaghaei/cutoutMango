@@ -8,19 +8,19 @@ from model_VGG import modelVGG
 
 # INITIAL DATA
 # transform used on Pytorch tutorial
-# transform = transforms.Compose([transforms.ToTensor()])
+transform = transforms.Compose([transforms.ToTensor()])
 
 # # transform used on VGG code  
 transform = transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomResizedCrop(224),
+        # transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize(mean = [ 0.485, 0.456, 0.406 ],
                              std  = [ 0.229, 0.224, 0.225 ]),
         ])
 
 batch_size = 16
-num_of_epochs = 150
+num_of_epochs = 1
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                         download=True, transform=transform)
@@ -36,13 +36,14 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
 # test_id = "log1"
 # filename = 'logs/' + test_id + '.csv'
 # csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
-model = modelVGG(trainset, testset)
+# model = modelVGG(trainset, testset)
+model = torch.load('models/vggcnn.pt')
 # model = train_and_test(trainloader, testloader, "vanilla_model.pt",
 #                        num_of_epochs, save=True)
 # Uncomment if need to load from file:
 # model = load_model("vanilla_model.pt")
-
 mango = Mango(model, trainloader, folder_name='t_train')
+print(type(model))
 new_train = mango.create_dataset()
 # Uncomment if need to load from file:
 # new_train = load_from("data/MANGO/t_train/maskD.txt")
