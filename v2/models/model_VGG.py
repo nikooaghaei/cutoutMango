@@ -5,9 +5,6 @@ import torchvision.transforms as transforms
 
 from tqdm import tqdm
 
-LEARNING_RATE = 0.01
-N_CLASSES = 10
-
 def conv_layer(chann_in, chann_out, k_size, p_size):
     layer = tnn.Sequential(
         tnn.Conv2d(chann_in, chann_out, kernel_size=k_size, padding=p_size),
@@ -61,7 +58,8 @@ class VGG16(tnn.Module):
 
         return out
 
-def modelVGG(trainLoader, testLoader, BATCH_SIZE, EPOCH=1):
+def modelVGG(trainLoader, testLoader, BATCH_SIZE, EPOCH=1,
+             LEARNING_RATE = 0.01, N_CLASSES = 10):
 
     vgg16 = VGG16(n_classes=N_CLASSES)
     vgg16.cuda()

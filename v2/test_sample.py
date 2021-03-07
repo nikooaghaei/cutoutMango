@@ -1,62 +1,27 @@
-import torch 
-import torchvision
-import torchvision.transforms as transforms
+from util.MangoBox import load_from, run_mango
+from util.model_tools import train_VGG#, train_simple
+from util.data import set_data_CIFAR10
 
-from util.MangoBox import Mango, load_from
-from model import train_and_test, load_model
-from model_VGG import modelVGG
+batch_size = 32
+num_of_epochs = 100
 
-# INITIAL DATA
-# transform used on Pytorch tutorial
-transform = transforms.Compose([transforms.ToTensor()])
+#### LOADING DATA ####
+trainloader, testloader = set_data_CIFAR10(batch_size)
 
-# # transform used on VGG code  
-transform = transforms.Compose([
-        # transforms.RandomResizedCrop(224),
-        # transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean = [ 0.485, 0.456, 0.406 ],
-                             std  = [ 0.229, 0.224, 0.225 ]),
-        ])
+#### TRAINING MODEL ####
+model = train_VGG(trainloader, testloader, batch_size, num_of_epochs)
+                #   load_path='models/vggcnn.pt')
+# model = train_and_test(trainloader, stestloader, "vanilla_model.pt",
+#                        num_of_epochs, save=True)                  
 
-batch_size = 16
-num_of_epochs = 1
+#### CREATING MANGO DATA ####
+mango_trainloader = run_mango(model, trainloader, 
+                            #   load_from="data/MANGO/t_train/maskD.txt",
+                              folder_name='t_train',
+                              batch_size=batch_size,
+                              n_workers=2)
 
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                        download=True, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                          shuffle=True, num_workers=2)
-
-testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                       download=True, transform=transform)
-testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
-                                         shuffle=False, num_workers=2)
-
-
-# test_id = "log1"
-# filename = 'logs/' + test_id + '.csv'
-# csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
-# model = modelVGG(trainset, testset)
-model = torch.load('models/vggcnn.pt')
-# model = train_and_test(trainloader, testloader, "vanilla_model.pt",
-#                        num_of_epochs, save=True)
-# Uncomment if need to load from file:
-# model = load_model("vanilla_model.pt")
-mango = Mango(model, trainloader, folder_name='t_train')
-print(type(model))
-new_train = mango.create_dataset()
-# Uncomment if need to load from file:
-# new_train = load_from("data/MANGO/t_train/maskD.txt")
-
-print("# "*20, "\nDONE WITH SAVINGS...\n", "# "*20)
-
-new_trainloader = torch.utils.data.DataLoader(new_train, batch_size=batch_size,
-                                          shuffle=True, num_workers=0)
-
-# test_id = "log2"
-# filename = 'logs/' + test_id + '.csv'
-# csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=filename)
-model = modelVGG(trainset, testset)
+#### TRAINING WITH MANGO DATA ####
+model = train_VGG(mango_trainloader, testloader, batch_size, num_of_epochs)
 # model = train_and_test(new_trainloader, testloader, "mango_model.pt",
 #                        num_of_epochs, True)
-

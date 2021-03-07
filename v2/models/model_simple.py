@@ -99,11 +99,3 @@ def train_and_test(trainloader, testloader, PATH,
     # csv_logger.writerow(row)
 
     return net
-
-def load_model(PATH):
-    assert(PATH is None, "PATH is None not allowed, \
-                              please specify a PATH")
-    net = Net()
-    net.load_state_dict(torch.load("models/" + PATH))
-    print("Model is loading from", "models/" + PATH)
-    return net

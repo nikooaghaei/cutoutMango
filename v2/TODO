@@ -7,6 +7,7 @@ Please try to complete following:
         - 5/ Change learning rate
         - 3/ Shuffle MANGO data?
         - 5/ Remove other augmentations ?
+        - Run with pretrained model as the first phase
     Code:
     (Rating indicated importance level (/5))
         - 5/ Add functionality to both the model and the MANGO to
@@ -20,3 +21,6 @@ Please try to complete following:
             remove unnecessary ones
         - 3/ Check the masking functionality
         - 2/ Fix number of workers
+        - 1/ Update gitignore for models etc.
+        - 4/ Save the model each epoch - override
+        - 3/ Seperate training and testing
