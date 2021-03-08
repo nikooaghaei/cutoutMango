@@ -5,12 +5,18 @@ from util.data import set_data_CIFAR10
 batch_size = 32
 num_of_epochs = 100
 
+# Increasing worker limit -seems to be necessary in some situations
+# check for more: https://github.com/pytorch/pytorch/issues/973#issuecomment-346405667
+import resource
+rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
+
 #### LOADING DATA ####
 trainloader, testloader = set_data_CIFAR10(batch_size)
 
 #### TRAINING MODEL ####
-model = train_VGG(trainloader, testloader, batch_size, num_of_epochs)
-                #   load_path='models/vggcnn.pt')
+model = train_VGG(trainloader, testloader, batch_size, num_of_epochs,
+                  load_path='models/vggcnn.pt')
 # model = train_and_test(trainloader, stestloader, "vanilla_model.pt",
 #                        num_of_epochs, save=True)                  
 

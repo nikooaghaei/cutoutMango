@@ -85,17 +85,17 @@ class Mango(object):
         min_prob = value
         label = index[0]
         res = img
-        while(mask_len > 0):    ####change to decide how deep to go
+        while(mask_len > 0): # change to decide how deep to go
             masks = np.ones((self.n_masks, h, w), np.float32)
             
-            masks[0][y1: y2, x1: x2] = 0.   ########or any other colors for mask
+            masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
             masks[1][y1: y2, x2: x3] = 0.
             masks[2][y2: y3, x1: x2] = 0.
             masks[3][y2: y3, x2: x3] = 0.
 
             masks = torch.from_numpy(masks)
 
-            expanding_node = -1     ###referring to original img
+            expanding_node = -1 # referring to original img
             
             for m, mask in enumerate(masks):
                 mask = mask.expand_as(img)
