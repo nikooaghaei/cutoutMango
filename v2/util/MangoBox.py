@@ -15,24 +15,25 @@ def load_from(path):
     with open(path, "rb") as fp:
         return pickle.load(fp)
 
-def run_mango(model, trainloader, length=16,
-              load_from_path='',
-              folder_name=str(time()),
-              batch_size=16,
-              n_masks=4,
-              n_workers=2):
-    if load_from_path:
-        new_train = load_from(load_from_path)
+def run_mango(model, trainloader, args):
+    if args.mng_load_data_path:
+        new_train = load_from(args.mng_load_data_path)
         if not isinstance(new_train, maskedDataset):
             raise ValueError('Inappropriate type loaded: {} for the data \
                 whereas a maskedDataset is expected'.format(type(new_train)))
     else:
-        mango = Mango(model, trainloader, length, 
-                      folder_name, n_masks)
+        mango = Mango(model, trainloader, args)
         new_train = mango.create_dataset()
+
+        # Determine number of classes in mango dataset
+        if args.mng_dataset == 'cifar10':
+            num_classes = 10
+        elif args.mng_dataset == 'cifar100':
+            num_classes = 100
     
-    return torch.utils.data.DataLoader(new_train, batch_size=batch_size,
-                                       shuffle=True, num_workers=n_workers)
+    return torch.utils.data.DataLoader(new_train, batch_size=args.batch_size,
+                                       shuffle=True, 
+                                       num_workers=args.n_workers), num_classes
 
 class Mango(object):
     """Mask out most important part of an image.
@@ -41,26 +42,26 @@ class Mango(object):
         model (torch.model): Pytorch model to mask according to
         data (list - [(img, lbl), ...]): Image data to mask
         folder_name (str): Name of the folder to save the images on
-        n_masks (int): Number of masks to cut out of each image. -ongoing
+        n_branches (int): Each node is divided to n_branches nodes -ongoing
     """
-    def __init__(self, model, data, length,
-                 folder_name, n_masks):
+    def __init__(self, model, data, args):
         self.model = model
-        self.n_masks = n_masks
-        self.init_length = length
+        self.n_branches = args.mng_n_branches
+        self.init_length = args.mng_init_len
         self.data = data
         
-        self.folder_name = folder_name
-        self.path = "data/MANGO/" + folder_name
+        self.path = "data/MANGO/" + args.mng_save_data_path
 
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = args.device
 
     def _run_masking(self, img):
         """
         Args:
-            root_img (Tensor): Tensor image of size (C, H, W).
+            img (Tensor): Tensor image of size (C, H, W).
         Returns:
-            TODO
+            Tensor: Image with one hole of dimension 
+            ((mask_len * 2) % h x (mask_len * 2) % h) cut out of it.
+            Integer (mask_len * 2) % h : Length of the mask cut out of the image.
         """
         h = img.size(1)
         w = img.size(2)
@@ -86,7 +87,7 @@ class Mango(object):
         label = index[0]
         res = img
         while(mask_len > 0): # change to decide how deep to go
-            masks = np.ones((self.n_masks, h, w), np.float32)
+            masks = np.ones((self.n_branches, h, w), np.float32)
             
             masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
             masks[1][y1: y2, x2: x3] = 0.
@@ -118,8 +119,6 @@ class Mango(object):
                     res = masked_img
 
             if expanding_node == -1:
-                # with open('mask_loc.txt', 'a') as f:
-                #     print((mask_len * 2) % h, file=f)
                 return res, (mask_len * 2) % h
             elif expanding_node == 0:
                 y1 = np.clip(y1, 0, y1)

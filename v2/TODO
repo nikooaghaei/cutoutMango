@@ -15,8 +15,6 @@ Please try to complete following:
             (save checkpoints)
         - 1/ Fix assert warnings. Make sure the code does not run
           if it's going to fail in an upcoming phase
-        - 2/ Add tqdm and print out the interesting results such
-           as training accuracy, testing accuracy etc.
         - 1/ Fix the comments on the MANGO, describe each function
             remove unnecessary ones
         - 3/ Check the masking functionality

@@ -1,34 +1,30 @@
 import torch
-import torch.nn as tnn
-import torchvision.datasets as dsets
-import torchvision.transforms as transforms
-
-from tqdm import tqdm
+import torch.nn as nn
 
 def conv_layer(chann_in, chann_out, k_size, p_size):
-    layer = tnn.Sequential(
-        tnn.Conv2d(chann_in, chann_out, kernel_size=k_size, padding=p_size),
-        tnn.BatchNorm2d(chann_out),
-        tnn.ReLU()
+    layer = nn.Sequential(
+        nn.Conv2d(chann_in, chann_out, kernel_size=k_size, padding=p_size),
+        nn.BatchNorm2d(chann_out),
+        nn.ReLU()
     )
     return layer
 
 def vgg_conv_block(in_list, out_list, k_list, p_list, pooling_k, pooling_s):
 
     layers = [ conv_layer(in_list[i], out_list[i], k_list[i], p_list[i]) for i in range(len(in_list)) ]
-    layers += [ tnn.MaxPool2d(kernel_size = pooling_k, stride = pooling_s)]
-    return tnn.Sequential(*layers)
+    layers += [ nn.MaxPool2d(kernel_size = pooling_k, stride = pooling_s)]
+    return nn.Sequential(*layers)
 
 def vgg_fc_layer(size_in, size_out):
-    layer = tnn.Sequential(
-        tnn.Linear(size_in, size_out),
-        tnn.BatchNorm1d(size_out),
-        tnn.ReLU()
+    layer = nn.Sequential(
+        nn.Linear(size_in, size_out),
+        nn.BatchNorm1d(size_out),
+        nn.ReLU()
     )
     return layer
 
-class VGG16(tnn.Module):
-    def __init__(self, n_classes=10):
+class VGG16(nn.Module):
+    def __init__(self, n_classes):
         super(VGG16, self).__init__()
 
         # Conv blocks (BatchNorm + ReLU activation added in each block)
@@ -43,7 +39,7 @@ class VGG16(tnn.Module):
         self.layer7 = vgg_fc_layer(4096, 4096)
 
         # Final layer
-        self.layer8 = tnn.Linear(4096, n_classes)
+        self.layer8 = nn.Linear(4096, n_classes)
 
     def forward(self, x):
         out = self.layer1(x)
@@ -57,60 +53,4 @@ class VGG16(tnn.Module):
         out = self.layer8(out)
 
         return out
-
-def modelVGG(trainLoader, testLoader, BATCH_SIZE, EPOCH=1,
-             LEARNING_RATE = 0.01, N_CLASSES = 10):
-
-    vgg16 = VGG16(n_classes=N_CLASSES)
-    vgg16.cuda()
-
-    # Loss, Optimizer & Scheduler
-    cost = tnn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(vgg16.parameters(), lr=LEARNING_RATE)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
-
-    # Train the model
-    for epoch in range(EPOCH):
-
-        avg_loss = 0
-
-        progress_bar = tqdm(trainLoader)
-        for i, (images, labels) in enumerate(progress_bar):
-            progress_bar.set_description('Epoch ' + str(epoch + 1))
-            # get the inputs; data is a list of [inputs, labels]
-            
-            images = images.cuda()
-            labels = labels.cuda()
-
-            # Forward + Backward + Optimize
-            optimizer.zero_grad()
-            outputs = vgg16(images)
-            loss = cost(outputs, labels)
-            avg_loss += loss.data
-            # print statistics
-            progress_bar.set_postfix(
-                loss='%.3f' % loss.data,
-                avg_loss='%.3f' % (avg_loss / (i + 1)))
-
-            loss.backward()
-            optimizer.step()
-        scheduler.step(avg_loss)
-
-        # Test the model
-        vgg16.eval()
-        correct = 0.
-        total = 0.
-
-        for images, labels in testLoader:
-            images = images.cuda()
-            outputs = vgg16(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted.cpu() == labels).sum()
-            # print(predicted, labels, correct, total)
-        print("avg acc:%.3f" % (100* correct/total))
-        vgg16.train()
-    # Save the Trained Model
-    torch.save(vgg16, 'models/vggcnn.pt')
-    return vgg16
     
