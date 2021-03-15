@@ -3,9 +3,12 @@ import argparse
 import torch
 import torch.backends.cudnn as cudnn
 
+from pathlib import Path
+
 from util.MangoBox import load_from, run_mango
 from util.model_tools import train  # , train_simple
 from util.data import set_data
+from util.misc import CSVLogger
 
 # Increasing worker limit -seems to be necessary in some situations
 # check for more: https://github.com/pytorch/pytorch/issues/973#issuecomment-346405667
@@ -28,12 +31,12 @@ parser.add_argument('--mng_model', '-mm', default='resnet18',
                     choices=model_options)
 parser.add_argument('--first_model_load_path', '-mlp', default='',
                     help='path for both models to load from(default: None)')
-parser.add_argument('--model_save_path', '-sp1', default='',
-                    help='path to save both models in models/args.model_save_path (default: None)')
+# parser.add_argument('--model_save_path', '-sp1', default='',
+#                     help='path to save both models in models/args.model_save_path (default: None)')
 parser.add_argument('--mng_load_data_path', '-ld', default='',
                     help='path for MANGO data to load (default: None)')
-parser.add_argument('--mng_save_data_path', '-sd', default='',
-                    help='path to save mango data in data/MANGO/mng_save_data (default: None)')
+# parser.add_argument('--mng_save_data_path', '-sd', default='',
+#                     help='path to save mango data in data/MANGO/mng_save_data (default: None)')
 parser.add_argument('--batch_size', type=int, default=128,
                     help='input batch size for training (default: 128)')
 parser.add_argument('--n_epochs', type=int, default=1,
@@ -42,6 +45,8 @@ parser.add_argument('--learning_rate', '-lr', type=float, default=0.01,
                     help='learning rate')
 parser.add_argument('--data_augmentation', action='store_true', default=False,
                     help='augment data by flipping and cropping')
+parser.add_argument('--save_models', action='store_true', default=False,
+                    help='save both first and MANGO model in models/ and models/MANGO/ (default:F)')
 parser.add_argument('--cutout', action='store_true', default=False,
                     help='apply Cutout')
 parser.add_argument('--cutout_n_holes', type=int, default=1,
@@ -58,8 +63,10 @@ parser.add_argument('--mng_init_len', type=int, default=16,
                     help='initial length of the masks in MANGO (default: 16)')
 parser.add_argument('--n_workers', type=int, default=2,
                     help='number of workers')
-parser.add_argument('--experiment_type', type=str, default='default',
-                    help='default:')  # TODO
+parser.add_argument('--experiment_type', '-ex',type=str, default='test_ex',
+                    help='Name for saving first model in models/, saving MANGO model in models/MANGO/, \
+                        saving MANGO data in data/MANGO, saving csv loggers in logs/ for first phase and \
+                            logs/MANGO/ for second phase (default:test_ex)')  # TODO
 
 args = parser.parse_args()
 
@@ -79,14 +86,27 @@ print(args)
 #### LOADING DATA ####
 trainloader, testloader, num_classes = set_data(args)
 
+print("logs/ created...")
+Path("logs/").mkdir(parents=True, exist_ok=True)
+log_filename = 'logs/' + args.experiment_type + '.csv'
+csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
+
 #### TRAIN/TEST MODEL ####
-model = train(trainloader, testloader, num_classes, args, False)
+model = train(trainloader, testloader, num_classes, csv_logger, args, False)
+
+csv_logger.close()
 
 if args.mango:
     #### CREATING MANGO DATA ####
     mango_trainloader, num_classes = run_mango(model, trainloader,
                                   #   load_from="data/MANGO/t_train/maskD.txt",
                                   args)
+    print("logs/MANGO/ created...")
+    Path("logs/MANGO/").mkdir(parents=True, exist_ok=True)
+    log_filename = 'logs/MANGO/' + args.experiment_type + '.csv'
+    mng_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
     #### TRAINING WITH MANGO DATA ####
-    model = train(mango_trainloader, testloader, num_classes, args, True)
+    model = train(mango_trainloader, testloader, num_classes, mng_csv_logger, args, True)
+
+    mng_csv_logger.close()

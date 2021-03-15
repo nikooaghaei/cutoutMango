@@ -50,7 +50,7 @@ class Mango(object):
         self.init_length = args.mng_init_len
         self.data = data
         
-        self.path = "data/MANGO/" + args.mng_save_data_path
+        self.path = "data/MANGO/" + args.experiment_type
 
         self.device = args.device
 
@@ -172,7 +172,7 @@ class Mango(object):
                     masked_img, mask = self._run_masking(img)
                    
                     Path('./data/masks/').mkdir(parents=True, exist_ok=True)
-                    with open('./data/masks/mask_loc.txt', 'a') as f:
+                    with open('./data/masks/mask_loc_widevgg.txt', 'a') as f:
                         print(mask, file=f)
                     
                     if mask:
@@ -183,9 +183,9 @@ class Mango(object):
         maskD = maskedDataset((original_data + masked_data), (original_label + masked_labels))
         
         # create data/MANGO folder if needed
-        print(self.path, "created...")
-        Path(self.path).mkdir(parents=True, exist_ok=True)
-        with open(self.path + '/maskD.txt', "wb") as fp:
+        print("data/MANGO/ created...")
+        Path("data/MANGO/").mkdir(parents=True, exist_ok=True)
+        with open(self.path + '.txt', "wb") as fp:
             pickle.dump(maskD, fp)
 
         print("Masked data has been successfuly created.")
