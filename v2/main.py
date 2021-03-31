@@ -6,7 +6,7 @@ import torch.backends.cudnn as cudnn
 from pathlib import Path
 
 from util.MangoBox import load_from, run_mango
-from util.model_tools import train  # , train_simple
+from util.model_tools import train_and_test  # , train_simple
 from util.data import set_data
 from util.misc import CSVLogger
 
@@ -35,13 +35,13 @@ parser.add_argument('--first_model_load_path', '-mlp', default='',
 #                     help='path to save both models in models/args.model_save_path (default: None)')
 parser.add_argument('--mng_load_data_path', '-ld', default='',
                     help='path for MANGO data to load (default: None)')
-# parser.add_argument('--mng_save_data_path', '-sd', default='',
-#                     help='path to save mango data in data/MANGO/mng_save_data (default: None)')
+parser.add_argument('--mng_save_data', '-sd', action='store_true', default=False,
+                    help='save mango data in data/MANGO/args.ex (default: True)')
 parser.add_argument('--batch_size', type=int, default=128,
                     help='input batch size for training (default: 128)')
-parser.add_argument('--n_epochs', type=int, default=1,
+parser.add_argument('--n_epochs', type=int, default=200,
                     help='number of epochs to train (default: 200)')
-parser.add_argument('--learning_rate', '-lr', type=float, default=0.01,
+parser.add_argument('--learning_rate', '-lr', type=float, default=0.1,
                     help='learning rate')
 parser.add_argument('--data_augmentation', action='store_true', default=False,
                     help='augment data by flipping and cropping')
@@ -72,6 +72,8 @@ args = parser.parse_args()
 
 args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+###################################################################################################
+
 cudnn.benchmark = True  # Should make training should go faster for large models
 
 torch.manual_seed(args.seed)
@@ -92,7 +94,7 @@ log_filename = 'logs/' + args.experiment_type + '.csv'
 csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
 #### TRAIN/TEST MODEL ####
-model = train(trainloader, testloader, num_classes, csv_logger, args, False)
+model = train_and_test(trainloader, testloader, num_classes, csv_logger, args, False)
 
 csv_logger.close()
 
@@ -101,12 +103,17 @@ if args.mango:
     mango_trainloader, num_classes = run_mango(model, trainloader,
                                   #   load_from="data/MANGO/t_train/maskD.txt",
                                   args)
+
     print("logs/MANGO/ created...")
     Path("logs/MANGO/").mkdir(parents=True, exist_ok=True)
     log_filename = 'logs/MANGO/' + args.experiment_type + '.csv'
     mng_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
     #### TRAINING WITH MANGO DATA ####
-    model = train(mango_trainloader, testloader, num_classes, mng_csv_logger, args, True)
+    # args.n_epochs = 400
+    # args.learning_rate = 0.01
+    # args.batch_size = 32
+    
+    mng_model = train_and_test(mango_trainloader, testloader, num_classes, mng_csv_logger, args, True)
 
     mng_csv_logger.close()

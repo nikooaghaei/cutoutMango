@@ -12,10 +12,12 @@ from models.resnet import ResNet18
 from models.wide_resnet import WideResNet
 from models.model_VGG import VGG16
 
-def train(trainloader, testloader, num_classes, logger, args, is_mango):
-    if args.first_model_load_path:
-        return torch.load(args.first_model_load_path)
+def train_and_test(trainloader, testloader, num_classes, logger, args, is_mango):
     model, optimizer, scheduler = _make_model(num_classes, args, is_mango)
+    if not is_mango and args.first_model_load_path:
+        model.load_state_dict(torch.load(args.first_model_load_path))
+        return model
+
     return _run_epochs(trainloader, testloader, model, optimizer, scheduler, logger, args, is_mango)
 
 def _make_model(num_classes, args, is_mango):
@@ -78,11 +80,11 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
             outputs = torch.max(outputs.data, 1)[1]
             total += labels.size(0)
             correct += (outputs == labels.data).sum().item()
-            accuracy = correct / total
+            accuracy = 100 * correct / total
 
             avg_loss += loss.item()
 
-            # print statistics
+            # print statistics           
             progress_bar.set_postfix(
                 loss='%.3f' % loss.data,
                 avg_loss='%.3f' % (avg_loss / (i + 1)),
