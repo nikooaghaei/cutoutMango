@@ -110,7 +110,7 @@ if args.mango:
     mng_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
     #### TRAINING WITH MANGO DATA ####
-    # args.n_epochs = 400
+    # args.n_epochs = 300
     # args.learning_rate = 0.01
     # args.batch_size = 32
     
