@@ -49,6 +49,8 @@ parser.add_argument('--save_models', action='store_true', default=False,
                     help='save both first and MANGO model in models/ and models/MANGO/ (default:F)')
 parser.add_argument('--cutout', action='store_true', default=False,
                     help='apply Cutout')
+parser.add_argument('--fixedcutout', action='store_true', default=False,
+                    help='apply CutoutF')
 parser.add_argument('--cutout_n_holes', type=int, default=1,
                     help='number of holes to cut out from image in Cutout')
 parser.add_argument('--cutout_len', type=int, default=16,
@@ -63,7 +65,7 @@ parser.add_argument('--mng_init_len', type=int, default=16,
                     help='initial length of the masks in MANGO (default: 16)')
 parser.add_argument('--n_workers', type=int, default=2,
                     help='number of workers')
-parser.add_argument('--experiment_type', '-ex',type=str, default='test_ex',
+parser.add_argument('--experiment_name', '-ex',type=str, default='test_ex',
                     help='Name for saving first model in models/, saving MANGO model in models/MANGO/, \
                         saving MANGO data in data/MANGO, saving csv loggers in logs/ for first phase and \
                             logs/MANGO/ for second phase (default:test_ex)')  # TODO
@@ -88,9 +90,9 @@ print(args)
 #### LOADING DATA ####
 trainloader, testloader, num_classes = set_data(args)
 
-print("logs/ created...")
-Path("logs/").mkdir(parents=True, exist_ok=True)
-log_filename = 'logs/' + args.experiment_type + '.csv'
+print("rand_logs/ created...")
+Path("rand_logs/").mkdir(parents=True, exist_ok=True)
+log_filename = 'rand_logs/' + args.experiment_name + '.csv'
 csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
 #### TRAIN/TEST MODEL ####
@@ -104,9 +106,9 @@ if args.mango:
                                   #   load_from="data/MANGO/t_train/maskD.txt",
                                   args)
 
-    print("logs/MANGO/ created...")
-    Path("logs/MANGO/").mkdir(parents=True, exist_ok=True)
-    log_filename = 'logs/MANGO/' + args.experiment_type + '.csv'
+    print("rand_logs/MANGO/ created...")
+    Path("rand_logs/MANGO/").mkdir(parents=True, exist_ok=True)
+    log_filename = 'rand_logs/MANGO/' + args.experiment_name + '.csv'
     mng_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
     #### TRAINING WITH MANGO DATA ####

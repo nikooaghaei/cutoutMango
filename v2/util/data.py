@@ -2,6 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 from util.cutout import Cutout
+from util.cutoutFixed16 import CutoutF
 
 def set_data(args):
 	#### IMAGE PROCESSING ####
@@ -23,6 +24,8 @@ def set_data(args):
                                         std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
 	train_transform.transforms.append(cutout_normalize)
 	if args.cutout:
+		train_transform.transforms.append(Cutout(n_holes=args.cutout_n_holes, length=args.cutout_len))
+	if args.fixedcutout:
 		train_transform.transforms.append(Cutout(n_holes=args.cutout_n_holes, length=args.cutout_len))
 	
 	test_transform = transforms.Compose([

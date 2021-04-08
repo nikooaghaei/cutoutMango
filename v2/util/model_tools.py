@@ -112,12 +112,12 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
             print("Model saving to", "models/MANGO/")
             print("models/MANGO created...")
             Path("models/MANGO/").mkdir(parents=True, exist_ok=True)
-            torch.save(model.state_dict(), "models/MANGO/" + args.experiment_type + ".pt")
+            torch.save(model.state_dict(), "models/MANGO/" + args.experiment_name + ".pt")
         else:
             print("Model saving to", "models/")
             print("models/ created...")
             Path("models/").mkdir(parents=True, exist_ok=True)
-            torch.save(model.state_dict(), "models/" + args.experiment_type + ".pt")
+            torch.save(model.state_dict(), "models/" + args.experiment_name + ".pt")
     return model
 
 def test(model, loader, args):
