@@ -12,4 +12,9 @@ cutout2:
 
 	-this experiment proved the noticable difference between running as a transform or not (~95 acc when a transform vs ~86 when not) on resnet18 with default settings.
 
+mngcut and mngcut2-astrans:
+	running mngcut function once like MANGO and once as a transform on resnet18 with default settings.
 
+******Analysis:
+	using cutout (or other functions) as transform is resulting better than applying them once on a dataset and train and test on the result. My reasoning is that apparently using as a transform is applying the functions once in each epoch which means model will be traiined on n_epochs versions of each training data point in the end so we'll have a better model resulting in higher test accuracy in the end.
+	**comparing original Cutout with original MANGO on wideresnet shows MANGO is learning the training data faster and more than Cutout (which totally makes sense considering MANGO training on a fixed masked data whereas Cutout is training on randomly different masked data in each epoch) but MANGO is slower and in the end, less accurate on testing data in comparison to Cutout which again is reasonable as Cutout model was traind on a more diverse augmented data so is better generalized and trained and powerful to predict test data better.
