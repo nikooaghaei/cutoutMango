@@ -150,7 +150,7 @@ class MANGO_CUT(object):
         self.init_length = args.mng_init_len
         self.device = args.device
         self.data_size = data_size
-        self.n_calls = 0    #used as index of images
+        # self.n_calls = 0    #used as index of images
         self.probs = []
 
     def __call__(self, img):
@@ -177,8 +177,8 @@ class MANGO_CUT(object):
         x3 = 0
         # timing.append(('before if/else', time.time() - a)) 
         # print(self.n_calls)
-        if self.n_calls < self.data_size: # still in first epoch
-
+        if not self.probs[id(img)]: # still in first epoch
+        # if self.n_calls < self.data_size:
             # a = time.time()
 
             with torch.no_grad(): 
@@ -219,14 +219,16 @@ class MANGO_CUT(object):
                     min_prob = prob ###??pointer
                     branch = m
             
-            self.probs.append(branch)
+            self.probs[id(img)] = branch
+            # self.probs.append(branch)
             # timing.append(('inside if', time.time() -a ))
 
         else:
 
             # a = time.time()
 
-            branch = self.probs[self.n_calls % self.data_size]
+            branch = self.probs[id(img)]
+            # branch = self.probs[self.n_calls % self.data_size]
             # timing.append(('inside else', time.time() -a ))
 
         # a = time.time()
