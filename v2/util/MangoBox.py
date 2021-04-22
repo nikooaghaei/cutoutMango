@@ -145,33 +145,25 @@ class Mango(object):
                 return res, (mask_len * 2) % h
             mask_len = mask_len//2
             if expanding_node == 0:
-                y1 = np.clip(y1, 0, y1)
+                y3 = y2
                 y2 = np.clip(y1 + mask_len, 0, y2)
-                y3 = np.clip(y2, 0, y2)
-                x1 = np.clip(x1, 0, x1)
+                x3 = x2
                 x2 = np.clip(x1+mask_len, 0, x2)
-                x3 = np.clip(x2, 0, x2)
             elif expanding_node == 1:
-                y1 = np.clip(y1, 0, y1)
+                y3 = y2
                 y2 = np.clip(y1 + mask_len, 0, y2)
-                y3 = np.clip(y2, 0, y2)
-                x1 = np.clip(x2, 0, x2)
+                x1 = x2
                 x2 = np.clip(x2+mask_len, 0, x3)
-                x3 = np.clip(x3, 0, x3)
             elif expanding_node == 2:
-                y1 = np.clip(y2, 0, y2)
+                y1 = y2
                 y2 = np.clip(y2 + mask_len, 0, y3)
-                y3 = np.clip(y3, 0, y3)
-                x1 = np.clip(x1, 0, x1)
+                x3 = x2
                 x2 = np.clip(x1+mask_len, 0, x2)
-                x3 = np.clip(x2, 0, x2)
             elif expanding_node == 3:
-                y1 = np.clip(y2, 0, y2)
+                y1 = y2
                 y2 = np.clip(y2 + mask_len, 0, y3)
-                y3 = np.clip(y3, 0, y3)
-                x1 = np.clip(x2, 0, x2)
+                x1 = x2
                 x2 = np.clip(x2+mask_len, 0, x3)
-                x3 = np.clip(x3, 0, x3)
 
         return res, (mask_len * 2) % h
 
@@ -251,90 +243,80 @@ class Mango(object):
 
             mask_len = mask_len//3
             if expanding_node == 0:
-                y1 = np.clip(y1, 0, y1)
-                y2 = np.clip(y1 + mask_len, 0, y2)
                 y3 = np.clip(y1 + 2 * mask_len, 0, y2)
-                y4 = np.clip(y2, 0, y2)
-                x1 = np.clip(x1, 0, x1)
-                x2 = np.clip(x1+mask_len, 0, x2)
+                y4 = y2
+                y2 = np.clip(y1 + mask_len, 0, y2)
                 x3 = np.clip(x1 + 2*mask_len, 0, x2)
-                x4 = np.clip(x2, 0, x2)
+                x4 = x2
+                x2 = np.clip(x1+mask_len, 0, x2)
             elif expanding_node == 1:
-                y1 = np.clip(y1, 0, y1)
-                y2 = np.clip(y1 + mask_len, 0, y2)
                 y3 = np.clip(y1 + 2 * mask_len, 0, y2)
-                y4 = np.clip(y2, 0, y2)
-                x1 = np.clip(x2, 0, x2)
+                y4 = y2
+                y2 = np.clip(y1 + mask_len, 0, y2)
+                x1 = x2
+                x4 = x3
                 x2 = np.clip(x2+mask_len, 0, x3)
-                x3 = np.clip(x2+2*mask_len, 0, x3)
-                x4 = np.clip(x3, 0, x3)
+                x3 = np.clip(x1+2*mask_len, 0, x3)
             elif expanding_node == 2:
-                y1 = np.clip(y1, 0, y1)
-                y2 = np.clip(y1 + mask_len, 0, y2)
                 y3 = np.clip(y1 + 2 * mask_len, 0, y2)
-                y4 = np.clip(y2, 0, y2)
-                x1 = np.clip(x3, 0, x3)
+                y4 = y2
+                y2 = np.clip(y1 + mask_len, 0, y2)
+                x1 = x3
                 x2 = np.clip(x3+mask_len, 0, x4)
                 x3 = np.clip(x3+2 *mask_len, 0, x4)
-                x4 = np.clip(x4, 0, x4)
             elif expanding_node == 3:
-                y1 = np.clip(y2, 0, y2)
+                y1 = y2
+                y4 = y3
                 y2 = np.clip(y2 + mask_len, 0, y3)
-                y3 = np.clip(y2 + 2*mask_len, 0, y3)
-                y4 = np.clip(y3, 0, y3)
-                x1 = np.clip(x1, 0, x1)
-                x2 = np.clip(x1+mask_len, 0, x2)
+                y3 = np.clip(y1 + 2*mask_len, 0, y3)
                 x3 = np.clip(x1 + 2*mask_len, 0, x2)
-                x4 = np.clip(x2, 0, x2)
+                x4 = x2
+                x2 = np.clip(x1+mask_len, 0, x2)
             elif expanding_node == 4:
-                y1 = np.clip(y2, 0, y2)
+                y1 = y2
+                y4 = y3
                 y2 = np.clip(y2 + mask_len, 0, y3)
-                y3 = np.clip(y2 + 2*mask_len, 0, y3)
-                y4 = np.clip(y3, 0, y3)
-                x1 = np.clip(x2, 0, x2)
+                y3 = np.clip(y1 + 2*mask_len, 0, y3)
+                x1 = x2
+                x4 = x3
                 x2 = np.clip(x2+mask_len, 0, x3)
-                x3 = np.clip(x2+2*mask_len, 0, x3)
-                x4 = np.clip(x3, 0, x3)
+                x3 = np.clip(x1+2*mask_len, 0, x3)
             elif expanding_node == 5:
-                y1 = np.clip(y2, 0, y2)
+                y1 = y2
+                y4 = y3
                 y2 = np.clip(y2 + mask_len, 0, y3)
-                y3 = np.clip(y2 + 2*mask_len, 0, y3)
-                y4 = np.clip(y3, 0, y3)
-                x1 = np.clip(x3, 0, x3)
+                y3 = np.clip(y1 + 2*mask_len, 0, y3)
+                x1 = x3
                 x2 = np.clip(x3+mask_len, 0, x4)
                 x3 = np.clip(x3+2 *mask_len, 0, x4)
-                x4 = np.clip(x4, 0, x4)
             elif expanding_node == 6:
-                y1 = np.clip(y3, 0, y3)
+                y1 = y3
                 y2 = np.clip(y3 + mask_len, 0, y4)
                 y3 = np.clip(y3 + 2*mask_len, 0, y4)
-                y4 = np.clip(y4, 0, y4)
-                x1 = np.clip(x1, 0, x1)
-                x2 = np.clip(x1+mask_len, 0, x2)
                 x3 = np.clip(x1 + 2*mask_len, 0, x2)
-                x4 = np.clip(x2, 0, x2)
+                x4 = x2
+                x2 = np.clip(x1+mask_len, 0, x2)
             elif expanding_node == 7:
-                y1 = np.clip(y3, 0, y3)
+                y1 = y3
                 y2 = np.clip(y3 + mask_len, 0, y4)
                 y3 = np.clip(y3 + 2*mask_len, 0, y4)
-                y4 = np.clip(y4, 0, y4)
-                x1 = np.clip(x2, 0, x2)
+                x1 = x2
+                x4 = x3
                 x2 = np.clip(x2+mask_len, 0, x3)
-                x3 = np.clip(x2+2*mask_len, 0, x3)
-                x4 = np.clip(x3, 0, x3)
+                x3 = np.clip(x1+2*mask_len, 0, x3)
             elif expanding_node == 8:
-                y1 = np.clip(y3, 0, y3)
+                y1 = y3
                 y2 = np.clip(y3 + mask_len, 0, y4)
                 y3 = np.clip(y3 + 2*mask_len, 0, y4)
-                y4 = np.clip(y4, 0, y4)
-                x1 = np.clip(x2, 0, x2)
+                x1 = x2
+                x4 = x3
                 x2 = np.clip(x2+mask_len, 0, x3)
-                x3 = np.clip(x2+2*mask_len, 0, x3)
-                x4 = np.clip(x3, 0, x3)
+                x3 = np.clip(x1+2*mask_len, 0, x3)
 
         return res, (mask_len * 3) % h
 
-    def _run_masking8(self, img):
+    def _run_masking8(self, img):#######WRONG FUNC#######yi and xi variables should be fixed!!!!!!
+        #TODO
         """
         version of MANGo wheremain part is chosen among all four 16x16 and all thirty two 8x8 children masks.
         Args:
