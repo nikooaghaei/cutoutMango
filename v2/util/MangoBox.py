@@ -94,12 +94,12 @@ class Mango(object):
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
         min_mask_len = 0  #Or w//4 as our images are squar
         mask_len = self.init_length
-        y1 = np.clip(0, 0, h)
+        y1 = 0
         y2 = np.clip(mask_len, 0, h)
-        y3 = np.clip(h, 0, h)
-        x1 = np.clip(0, 0, w)
+        y3 = h
+        x1 = 0
         x2 = np.clip(mask_len, 0, w)
-        x3 = np.clip(w, 0, w)
+        x3 = w
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
@@ -183,14 +183,14 @@ class Mango(object):
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
         min_mask_len = 0  #Or w//4 as our images are squar
         mask_len = self.init_length
-        y1 = np.clip(0, 0, h)
+        y1 = 0
         y2 = np.clip(mask_len, 0, h)
         y3 = np.clip(2 * mask_len, 0, h)
-        y4 = np.clip(h, 0, h)
-        x1 = np.clip(0, 0, w)
+        y4 = h
+        x1 = 0
         x2 = np.clip(mask_len, 0, w)
         x3 = np.clip(2*mask_len, 0, w)
-        x4 = np.clip(w, 0, w)
+        x4 = w
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:

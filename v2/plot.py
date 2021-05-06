@@ -20,14 +20,15 @@ def plot_multi(data_path=None, header=None,
     for i, data in enumerate(data_path):
         df = pd.read_csv(data,sep=',',header=header[i])
         if data_names[i]:
-            plt.plot(df['test_acc'].to_list(), label=data_names[i])
+            plt.plot(df['test_acc'][-40:].to_list(), label=data_names[i])
         else:
-            plt.plot(df['test_acc'].to_list())
+            plt.plot(df['test_acc'][-40:].to_list())
     plt.ylabel('Test Accuracy'); plt.xlabel('Epochs')
     plt.legend(loc="lower right")
     if save_path[-5:] == '.jpeg':
         lp = save_path.rfind('/')
-        Path(save_path[:lp]).mkdir(parents=True, exist_ok=True)
+        if lp != -1:
+            Path(save_path[:lp]).mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path)
     else:
         Path(save_path).mkdir(parents=True, exist_ok=True)
@@ -37,7 +38,7 @@ def plot_multi(data_path=None, header=None,
 #           header=23,
 #           save_path='test')
 
-plot_multi(data_path=['logs/MANGO/orignewcutout.csv', 'logs/MANGO/wide-wide-3x3.csv'], 
-           header=[23, 23],
-           data_names=['MANGO', 'MANGO 3x3'], 
-           save_path='test.jpeg')
+plot_multi(data_path=['rand_logs/res18cutout-orig.csv', 'rand_logs/MANGO/origmngcut+aug-noID.csv', 'rand_logs/MANGO/maskdiff-faredge.csv', 'rand_logs/MANGO/random-perpix-pch.csv', 'rand_logs/MANGO/origmng-trans-mindepth8.csv'], 
+           header=[23, 23, 23, 23, 23],
+           data_names=['originalCutout', 'MangoCut', 'Mango_FaredgeMask','Mango_RandPerPixMask','originalMango'], 
+           save_path='last40.jpeg')

@@ -1,11 +1,11 @@
 import torch
-import torchvision
-import torchvision.transforms as transforms
+import util.data_v2.datasets as datasets
+import util.data_v2.transforms_v2 as transforms
 from util.cutout import Cutout
 from util.mango_try import OrigMANGO, MngCut_RandomColor, MANGO_CUT,\
 	Mng_RandColor, ForcedMngCut
 
-def set_data(args, trained_model = None, is_mango = False):
+def set_data_v2(args, trained_model = None, is_mango = False):
 	#### IMAGE PROCESSING ####
 	train_transform = transforms.Compose([])
 
@@ -33,15 +33,15 @@ def set_data(args, trained_model = None, is_mango = False):
 	#### CREATING TEST/TRAIN DATA
 	if args.first_dataset == 'cifar10':
 		num_classes = 10
-		trainset = torchvision.datasets.CIFAR10(root='../data', train=True,
+		trainset = datasets.CIFAR10(root='../data', train=True,
 											download=True, transform=train_transform)
-		testset = torchvision.datasets.CIFAR10(root='../data', train=False,
+		testset = datasets.CIFAR10(root='../data', train=False,
 											download=True, transform=test_transform)
 	elif args.first_dataset == 'cifar100':
 		num_classes = 100
-		trainset = torchvision.datasets.CIFAR100(root='../data', train=True,
+		trainset = datasets.CIFAR100(root='../data', train=True,
 												download=True, transform=train_transform)
-		testset = torchvision.datasets.CIFAR100(root='../data', train=False,
+		testset = datasets.CIFAR100(root='../data', train=False,
 											download=True, transform=test_transform)
 	if is_mango:
 		n_workers = 2

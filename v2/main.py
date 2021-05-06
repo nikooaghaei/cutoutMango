@@ -6,8 +6,9 @@ import torch.backends.cudnn as cudnn
 from pathlib import Path
 
 from util.MangoBox import load_from, run_mango
-from util.model_tools import train_and_test  # , train_simple
+from util.model_tools import train_and_test
 from util.data import set_data
+from util.data_v2.data_v2 import set_data_v2
 from util.misc import CSVLogger
 import multiprocessing as mp
 # Increasing worker limit -seems to be necessary in some situations
@@ -44,6 +45,8 @@ if __name__ == '__main__':
                         help='input batch size for training (default: 128)')
     parser.add_argument('--n_epochs', type=int, default=200,
                         help='number of epochs to train (default: 200)')
+    parser.add_argument('--mng_epochs', type=int, default=200,
+                        help='number of epochs to train (default: 200)')
     parser.add_argument('--learning_rate', '-lr', type=float, default=0.1,
                         help='learning rate')
     parser.add_argument('--data_augmentation', action='store_true', default=False,
@@ -57,7 +60,7 @@ if __name__ == '__main__':
     parser.add_argument('--cutout_len', type=int, default=16,
                         help='length of the holes in Cutout')
     parser.add_argument('--seed', type=int, default=0,
-                        help='random seed (default: 1)')
+                        help='random seed (default: 0)')
     parser.add_argument('--mango', action='store_true', default=False,
                         help='apply MANGO')
     parser.add_argument('--mng_n_branches', type=int, default=4,

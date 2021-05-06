@@ -50,13 +50,17 @@ def _make_model(num_classes, args, is_mango):
 def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger, args, is_mango):
     if is_mango:
         model_name = args.mng_model
+        n_epochs = args.mng_epochs
     else:
         model_name = args.first_model
+        n_epochs = args.n_epochs
 
     criterion = nn.CrossEntropyLoss().to(args.device)
+    best_acc = 0.
+    best_epoch = 1
 
     # Train and test the model
-    for epoch in range(args.n_epochs):
+    for epoch in range(n_epochs):
         correct = 0.
         total = 0.
         avg_loss = 0.
@@ -99,10 +103,17 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
         # Test the model after each epoch
         test_acc = test(model, testLoader, args)
         tqdm.write('test_acc: %.3f' % test_acc)
+
+        if test_acc > best_acc:
+            best_epoch = epoch + 1
+            best_acc = max(test_acc, best_acc)
     
         # Save output log
         row = {'epoch': str(epoch + 1), 'train_acc': "  " + str('%.3f' % accuracy), 'test_acc': "  " + str('%.3f' % test_acc)} 
         csv_logger.writerow(row)
+    
+    row = {'epoch': "best epoch: " + str(best_epoch), 'test_acc': "  " + str('%.3f' % best_acc)} 
+    csv_logger.writerow(row)
 
     # Save the Trained Model
     if args.save_models:
