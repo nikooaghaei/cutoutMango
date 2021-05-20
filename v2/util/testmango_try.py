@@ -394,8 +394,8 @@ class MANGO_CUT(object):
         w = img.size(2)
         # if img_id not in self.branches:  # still in first epoch
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
-        min_mask_len = 7
         temp_mask_len = self.mask_len
+        min_mask_len = 7
         y1 = 0
         y2 = np.clip(self.mask_len, 0, h)
         y3 = h
@@ -517,7 +517,7 @@ class OrigMANGO(object):
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):        
+    def __call__(self, img,true_label):        
         """
         Args:
             img (Tensor): Tensor image of size (C, H, W).
@@ -542,12 +542,12 @@ class OrigMANGO(object):
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
+        # value, index = nnf.softmax(pred, dim = 1).max(1)
         ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][true_label]
+        value = nnf.softmax(pred, dim = 1)[0][true_label]
         ##################
         min_prob = value
-        label = index[0]
+        # label = index[0]
         res = img
         while self.mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
@@ -570,9 +570,9 @@ class OrigMANGO(object):
                     except:
                         pred = self.model(temp_img)
                 softmax_prob = nnf.softmax(pred, dim = 1)
-                prob = softmax_prob[0][label]
+                prob = softmax_prob[0][true_label]
 
-                if prob < min_prob: ######treshold comes here
+                if prob > min_prob: ######treshold comes here
                     min_prob = prob
                     branch = m
                     res = masked_img
@@ -601,7 +601,7 @@ class OrigMANGO(object):
                 x2 = np.clip(x2+self.mask_len, 0, x3)
         return res
 
-class ForcedMANGO(object):
+class FixedMANGO(object):
     def __init__(self, model, args):
         self.model = model
         self.n_branches = args.mng_n_branches
@@ -808,8 +808,8 @@ class MngCut_RandomColor(object):
         h = img.size(1)
         w = img.size(2)
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
-        min_mask_len = 7
         temp_mask_len = self.mask_len
+        min_mask_len = 7
         y1 = 0
         y2 = np.clip(self.mask_len, 0, h)
         y3 = h
@@ -1019,8 +1019,8 @@ class ForcedMngCut(object):
         h = img.size(1)
         w = img.size(2)
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
-        min_mask_len = 7
         temp_mask_len = self.mask_len
+        min_mask_len = 7
         y1 = 0
         y2 = np.clip(self.mask_len, 0, h)
         y3 = h
@@ -1037,9 +1037,9 @@ class ForcedMngCut(object):
         ###############new
         # value = nnf.softmax(pred, dim = 1)[0][label]
         ##################
-        min_prob = 100
+        min_prob = 100  ####
         label = index[0]
-        branch = -2 # referring to parent img
+        branch = -1 # referring to parent node
         while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
             
@@ -1051,7 +1051,7 @@ class ForcedMngCut(object):
             
             for m, mask in enumerate(masks):
                 mask = mask.expand_as(img)
-                masked_img = img * mask #.to(self.device) # Why error
+                masked_img = img * mask
                 #####building child probability
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
@@ -1061,8 +1061,9 @@ class ForcedMngCut(object):
                         pred = self.model(temp_img)
                 softmax_prob = nnf.softmax(pred, dim = 1)
                 prob = softmax_prob[0][label]
+
                 if prob < min_prob: ######treshold comes here
-                    min_prob = prob
+                    min_prob = prob 
                     branch = m
             if branch < 0:  #root or parent from previous level is the answer
                 break
@@ -1095,239 +1096,8 @@ class ForcedMngCut(object):
                 y2 = np.clip(y2 + temp_mask_len, 0, y3)
                 x1 = x2
                 x2 = np.clip(x2+temp_mask_len, 0, x3)
-            branch = -1 #refers to previous parent which is not root (root => -2)
+            branch = -1 #refers to previous parent
     
-        if branch == -2:
-            print('wrong')
-            exit()
-        ####creating rand mask####
-        yc = np.random.randint(by1, by2)    #mask center coordinates
-        xc = np.random.randint(bx1, bx2)
-        yc1 = np.clip(yc - self.mask_len, 0, h)
-        yc2 = np.clip(yc + self.mask_len, 0, h)
-        xc1 = np.clip(xc - self.mask_len, 0, w)
-        xc2 = np.clip(xc + self.mask_len, 0, w)
-
-        rmask = np.ones((h, w), np.float32)
-        rmask[yc1: yc2, xc1: xc2] = 0.
-        rmask = torch.from_numpy(rmask)
-        rmask = rmask.expand_as(img)
-        img = img * rmask
-        return img
-
-class ForcedMngCut_gt(object):
-    """mngcut where no image is returned without masking. If root is main part,
-    a random 16x16 is placed on it like original Cutout
-    """
-    def __init__(self, model, args, data_size=50000):
-        self.model = model
-        self.n_branches = args.mng_n_branches
-        self.mask_len = args.mng_init_len
-        self.device = args.device
-
-    def __call__(self, img):
-        h = img.size(1)
-        w = img.size(2)
-        # if img_id not in self.branches:  # still in first epoch
-        # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
-        min_mask_len = 7
-        temp_mask_len = self.mask_len
-        y1 = 0
-        y2 = np.clip(self.mask_len, 0, h)
-        y3 = h
-        x1 = 0
-        x2 = np.clip(self.mask_len, 0, w)
-        x3 = w
-        with torch.no_grad(): 
-            root_image = img.view(1,3,32,32).to(self.device)
-            try:
-                pred = self.model(root_image).to(self.device)
-            except:
-                pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
-        min_prob = -1000
-        label = index[0]
-        branch = -2 # referring to original img
-        while temp_mask_len > min_mask_len:
-            masks = np.ones((self.n_branches, h, w), np.float32)
-            
-            masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
-            masks[1][y1: y2, x2: x3] = 0.
-            masks[2][y2: y3, x1: x2] = 0.
-            masks[3][y2: y3, x2: x3] = 0.
-            masks = torch.from_numpy(masks)
-            
-            for m, mask in enumerate(masks):
-                mask = mask.expand_as(img)
-                masked_img = img * mask #.to(self.device) # Why error
-                #####building child probability
-                with torch.no_grad():
-                    temp_img = masked_img.view(1,3,32,32).to(self.device)
-                    try:
-                        pred = self.model(temp_img).to(self.device)
-                    except:
-                        pred = self.model(temp_img)
-                softmax_prob = nnf.softmax(pred, dim = 1)
-                prob = softmax_prob[0][label]
-
-                if prob > min_prob: ######treshold comes here
-                    min_prob = prob ###??pointer
-                    branch = m
-            if branch < 0:  #root or parent from previous level is the answer
-                break
-            temp_mask_len = temp_mask_len//2
-            if branch == 0:
-                # self.branches[img_id] = (y1, y2, x1, x2)
-                by1,by2,bx1,bx2 = (y1, y2, x1, x2)
-                #### creating mng mask for next level ####
-                y3 = y2
-                y2 = np.clip(y1 + temp_mask_len, 0, y2)
-                x3 = x2
-                x2 = np.clip(x1+temp_mask_len, 0, x2)
-            elif branch == 1:
-                by1,by2,bx1,bx2 = (y1, y2, x2, x3)
-                #### creating mng mask for next level ####
-                y3 = y2
-                y2 = np.clip(y1 + temp_mask_len, 0, y2)
-                x1 = x2
-                x2 = np.clip(x2+temp_mask_len, 0, x3)
-            elif branch == 2:
-                by1,by2,bx1,bx2 = (y2, y3, x1, x2)
-                #### creating mng mask for next level ####
-                y1 = y2
-                y2 = np.clip(y2 + temp_mask_len, 0, y3)
-                x3 = x2
-                x2 = np.clip(x1+temp_mask_len, 0, x2)
-            elif branch == 3:
-                by1,by2,bx1,bx2 = (y2, y3, x2, x3)
-                #### creating mng mask for next level ####
-                y1 = y2
-                y2 = np.clip(y2 + temp_mask_len, 0, y3)
-                x1 = x2
-                x2 = np.clip(x2+temp_mask_len, 0, x3)
-            branch = -1 #refers to previous parent which is not root (root => -2)
-    
-        if branch == -2:
-            # self.branches[img_id] = (-2, -2, -2, -2)
-            # by1,by2,bx1,bx2 = (-2, -2, -2, -2)
-            return img
-        ####creating rand mask####
-        yc = np.random.randint(by1, by2)    #mask center coordinates
-        xc = np.random.randint(bx1, bx2)
-        yc1 = np.clip(yc - self.mask_len // 2, 0, h)
-        yc2 = np.clip(yc + self.mask_len // 2, 0, h)
-        xc1 = np.clip(xc - self.mask_len // 2, 0, w)
-        xc2 = np.clip(xc + self.mask_len // 2, 0, w)
-
-        rmask = np.ones((h, w), np.float32)
-        rmask[yc1: yc2, xc1: xc2] = 0.
-        rmask = torch.from_numpy(rmask)
-        rmask = rmask.expand_as(img)
-        img = img * rmask
-        return img
-
-class MngCut_gt(object):
-    """mngcut where no image is returned without masking. If root is main part,
-    a random 16x16 is placed on it like original Cutout
-    """
-    def __init__(self, model, args, data_size=50000):
-        self.model = model
-        self.n_branches = args.mng_n_branches
-        self.mask_len = args.mng_init_len
-        self.device = args.device
-
-    def __call__(self, img):
-        h = img.size(1)
-        w = img.size(2)
-        # if img_id not in self.branches:  # still in first epoch
-        # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
-        min_mask_len = 7
-        temp_mask_len = self.mask_len
-        y1 = 0
-        y2 = np.clip(self.mask_len, 0, h)
-        y3 = h
-        x1 = 0
-        x2 = np.clip(self.mask_len, 0, w)
-        x3 = w
-        with torch.no_grad(): 
-            root_image = img.view(1,3,32,32).to(self.device)
-            try:
-                pred = self.model(root_image).to(self.device)
-            except:
-                pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
-        min_prob = value
-        label = index[0]
-        branch = -2 # referring to original img
-        while temp_mask_len > min_mask_len:
-            masks = np.ones((self.n_branches, h, w), np.float32)
-            
-            masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
-            masks[1][y1: y2, x2: x3] = 0.
-            masks[2][y2: y3, x1: x2] = 0.
-            masks[3][y2: y3, x2: x3] = 0.
-            masks = torch.from_numpy(masks)
-            
-            for m, mask in enumerate(masks):
-                mask = mask.expand_as(img)
-                masked_img = img * mask #.to(self.device) # Why error
-                #####building child probability
-                with torch.no_grad():
-                    temp_img = masked_img.view(1,3,32,32).to(self.device)
-                    try:
-                        pred = self.model(temp_img).to(self.device)
-                    except:
-                        pred = self.model(temp_img)
-                softmax_prob = nnf.softmax(pred, dim = 1)
-                prob = softmax_prob[0][label]
-
-                if prob > min_prob: ######treshold comes here
-                    min_prob = prob ###??pointer
-                    branch = m
-            if branch < 0:  #root or parent from previous level is the answer
-                break
-            temp_mask_len = temp_mask_len//2
-            if branch == 0:
-                # self.branches[img_id] = (y1, y2, x1, x2)
-                by1,by2,bx1,bx2 = (y1, y2, x1, x2)
-                #### creating mng mask for next level ####
-                y3 = y2
-                y2 = np.clip(y1 + temp_mask_len, 0, y2)
-                x3 = x2
-                x2 = np.clip(x1+temp_mask_len, 0, x2)
-            elif branch == 1:
-                by1,by2,bx1,bx2 = (y1, y2, x2, x3)
-                #### creating mng mask for next level ####
-                y3 = y2
-                y2 = np.clip(y1 + temp_mask_len, 0, y2)
-                x1 = x2
-                x2 = np.clip(x2+temp_mask_len, 0, x3)
-            elif branch == 2:
-                by1,by2,bx1,bx2 = (y2, y3, x1, x2)
-                #### creating mng mask for next level ####
-                y1 = y2
-                y2 = np.clip(y2 + temp_mask_len, 0, y3)
-                x3 = x2
-                x2 = np.clip(x1+temp_mask_len, 0, x2)
-            elif branch == 3:
-                by1,by2,bx1,bx2 = (y2, y3, x2, x3)
-                #### creating mng mask for next level ####
-                y1 = y2
-                y2 = np.clip(y2 + temp_mask_len, 0, y3)
-                x1 = x2
-                x2 = np.clip(x2+temp_mask_len, 0, x3)
-            branch = -1 #refers to previous parent which is not root (root => -2)
-    
-        if branch == -2:
-            # self.branches[img_id] = (-2, -2, -2, -2)
-            # by1,by2,bx1,bx2 = (-2, -2, -2, -2)
-            return img
         ####creating rand mask####
         yc = np.random.randint(by1, by2)    #mask center coordinates
         xc = np.random.randint(bx1, bx2)

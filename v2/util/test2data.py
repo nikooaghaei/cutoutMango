@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 from util.cutout import Cutout
-from util.mango_try import OrigMANGO, MngCut_RandomColor, MANGO_CUT,\
+from util.mango_try2 import FixedMANGO, OrigMANGO, MngCut_RandomColor, MANGO_CUT,\
 	Mng_RandColor, ForcedMngCut, ForcedMngCut_gt, MngCut_gt
 
 def set_data(args, trained_model = None, is_mango = False):
@@ -25,14 +25,14 @@ def set_data(args, trained_model = None, is_mango = False):
 	if args.cutout:
 		train_transform.transforms.append(Cutout(n_holes=args.cutout_n_holes, length=args.cutout_len))
 	if is_mango:
-		if args.forced and args.gt:
-			train_transform.transforms.append(ForcedMngCut_gt(model=trained_model, args=args))
-		elif args.forced:
-			train_transform.transforms.append(ForcedMngCut(model=trained_model, args=args))
-		elif args.gt:
-			train_transform.transforms.append(MngCut_gt(model=trained_model, args=args))		
-		else:
-			train_transform.transforms.append(MANGO_CUT(model=trained_model, args=args))
+		# if args.forced and args.gt:
+		# 	train_transform.transforms.append(ForcedMngCut_gt(model=trained_model, args=args))
+		# elif args.forced:
+		# 	train_transform.transforms.append(ForcedMngCut(model=trained_model, args=args))
+		# elif args.gt:
+		# 	train_transform.transforms.append(MngCut_gt(model=trained_model, args=args))		
+		# else:
+		train_transform.transforms.append(OrigMANGO(model=trained_model, args=args))
 
 	test_transform = transforms.Compose([
         transforms.ToTensor(), cutout_normalize])

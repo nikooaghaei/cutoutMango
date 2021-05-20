@@ -7,7 +7,7 @@ from pathlib import Path
 
 from util.MangoBox import load_from, run_mango
 from util.model_tools import train_and_test
-from util.data import set_data
+from util.test2data import set_data
 from util.data_v2.data_v2 import set_data_v2
 from util.misc import CSVLogger
 import multiprocessing as mp
@@ -68,7 +68,6 @@ if __name__ == '__main__':
                         help='apply forcedMANGOcut')
     parser.add_argument('--gt', action='store_true', default=False,
                         help='apply MANGOcutgt')
-
 
     parser.add_argument('--mng_n_branches', type=int, default=4,
                         help='number of barnches at each node in MANGO (default: 4)')

@@ -8,7 +8,7 @@ from pathlib import Path
 from util.MangoBox import load_from, run_mango
 from util.model_tools import train_and_test
 from util.data import set_data
-from util.data_v2.data_v2 import set_data_v2
+from util.testdata_v2.data_v2 import set_data_v2
 from util.misc import CSVLogger
 import multiprocessing as mp
 # Increasing worker limit -seems to be necessary in some situations
@@ -63,13 +63,6 @@ if __name__ == '__main__':
                         help='random seed (default: 0)')
     parser.add_argument('--mango', action='store_true', default=False,
                         help='apply MANGO')
-
-    parser.add_argument('--forced', action='store_true', default=False,
-                        help='apply forcedMANGOcut')
-    parser.add_argument('--gt', action='store_true', default=False,
-                        help='apply MANGOcutgt')
-
-
     parser.add_argument('--mng_n_branches', type=int, default=4,
                         help='number of barnches at each node in MANGO (default: 4)')
     parser.add_argument('--mng_init_len', type=int, default=16,
@@ -99,7 +92,7 @@ if __name__ == '__main__':
     # test_id = args.dataset + '_' + args.model TODO
 
     #### LOADING DATA ####
-    trainloader, testloader, num_classes = set_data(args)
+    trainloader, testloader, num_classes = set_data_v2(args)
 
     print("rand_logs/ created...")
     Path("rand_logs/").mkdir(parents=True, exist_ok=True)
@@ -116,7 +109,7 @@ if __name__ == '__main__':
         # mango_trainloader, num_classes = run_mango(model, trainloader, args)
     
         #### USING MANGO AS A DATA TRANSFORM ####
-        mango_trainloader, _ , num_classes = set_data(args, model, is_mango = True)
+        mango_trainloader, _ , num_classes = set_data_v2(args, model, is_mango = True)
 
         print("rand_logs/MANGO/ created...")
         Path("rand_logs/MANGO/").mkdir(parents=True, exist_ok=True)
