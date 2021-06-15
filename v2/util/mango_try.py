@@ -387,7 +387,7 @@ class MANGO_CUT(object):
         # self.n_calls = 0  # used as index of images
         # self.branches = {}
 
-    def __call__(self, img):
+    def __call__(self, img, true_label = None):
         # img_id = get_id(img)
         
         h = img.size(1)
@@ -402,18 +402,21 @@ class MANGO_CUT(object):
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
+        if true_label:
+            value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = value
-        label = index[0]
         branch = -2 # referring to original img
         while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
@@ -428,6 +431,7 @@ class MANGO_CUT(object):
                 mask = mask.expand_as(img)
                 masked_img = img * mask #.to(self.device) # Why error
                 #####building child probability
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
                     try:
@@ -511,13 +515,13 @@ class MANGO_CUT(object):
         return img
 
 class OrigMANGO(object):
-    def __init__(self, model, args, data_size=50000):
+    def __init__(self, model, args):
         self.model = model
         self.n_branches = args.mng_n_branches
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):        
+    def __call__(self, img, true_label = None):        
         """
         Args:
             img (Tensor): Tensor image of size (C, H, W).
@@ -528,6 +532,7 @@ class OrigMANGO(object):
         """
         h = img.size(1)
         w = img.size(2)
+        temp_mask_len = self.mask_len
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
         min_mask_len = 7
         y1 = 0
@@ -536,20 +541,23 @@ class OrigMANGO(object):
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][true_label]
-        ##################
+        if true_label:
+            value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = value
-        label = index[0]
         res = img
-        while self.mask_len > min_mask_len:
+        while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
             
             masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
@@ -563,6 +571,7 @@ class OrigMANGO(object):
                 mask = mask.expand_as(img)
                 masked_img = img * mask
                 #####building child probability
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
                     try:
@@ -578,27 +587,124 @@ class OrigMANGO(object):
                     res = masked_img
             if branch == -1:
                 return res
-            self.mask_len = self.mask_len//2
+            temp_mask_len = temp_mask_len//2
             if branch == 0:
                 y3 = y2
-                y2 = np.clip(y1 + self.mask_len, 0, y2)
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
                 x3 = x2
-                x2 = np.clip(x1+self.mask_len, 0, x2)
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
             elif branch == 1:
                 y3 = y2
-                y2 = np.clip(y1 + self.mask_len, 0, y2)
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
                 x1 = x2
-                x2 = np.clip(x2+self.mask_len, 0, x3)
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
             elif branch == 2:
                 y1 = y2
-                y2 = np.clip(y2 + self.mask_len, 0, y3)
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
                 x3 = x2
-                x2 = np.clip(x1+self.mask_len, 0, x2)
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
             elif branch == 3:
                 y1 = y2
-                y2 = np.clip(y2 + self.mask_len, 0, y3)
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
                 x1 = x2
-                x2 = np.clip(x2+self.mask_len, 0, x3)
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
+        return res
+
+class OrigMANGO_gt(object):
+    def __init__(self, model, args):
+        self.model = model
+        self.n_branches = args.mng_n_branches
+        self.mask_len = args.mng_init_len
+        self.device = args.device
+
+    def __call__(self, img, true_label = None):        
+        """
+        Args:
+            img (Tensor): Tensor image of size (C, H, W).
+        Returns:
+            Tensor: Image with one hole of dimension 
+            ((mask_len * 2) % h x (mask_len * 2) % h) cut out of it.
+            Integer (mask_len * 2) % h : Length of the mask cut out of the image.
+        """
+        h = img.size(1)
+        w = img.size(2)
+        temp_mask_len = self.mask_len
+        # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
+        min_mask_len = 7
+        y1 = 0
+        y2 = np.clip(self.mask_len, 0, h)
+        y3 = h
+        x1 = 0
+        x2 = np.clip(self.mask_len, 0, w)
+        x3 = w
+        
+        self.model.eval()
+        with torch.no_grad(): 
+            root_image = img.view(1,3,32,32).to(self.device)
+            try:
+                pred = self.model(root_image).to(self.device)
+            except:
+                pred = self.model(root_image)
+        if true_label:
+            value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
+        max_prob = value
+        res = img
+        while temp_mask_len > min_mask_len:
+            masks = np.ones((self.n_branches, h, w), np.float32)
+            
+            masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
+            masks[1][y1: y2, x2: x3] = 0.
+            masks[2][y2: y3, x1: x2] = 0.
+            masks[3][y2: y3, x2: x3] = 0.
+            masks = torch.from_numpy(masks)
+            branch = -1 # referring to original img
+            
+            for m, mask in enumerate(masks):
+                mask = mask.expand_as(img)
+                masked_img = img * mask
+                #####building child probability
+                self.model.eval()
+                with torch.no_grad():
+                    temp_img = masked_img.view(1,3,32,32).to(self.device)
+                    try:
+                        pred = self.model(temp_img).to(self.device)
+                    except:
+                        pred = self.model(temp_img)
+                softmax_prob = nnf.softmax(pred, dim = 1)
+                prob = softmax_prob[0][label]
+
+                if prob > max_prob: ######treshold comes here
+                    max_prob = prob
+                    branch = m
+                    res = masked_img
+            if branch == -1:
+                return res
+            temp_mask_len = temp_mask_len//2
+            if branch == 0:
+                y3 = y2
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
+                x3 = x2
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
+            elif branch == 1:
+                y3 = y2
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
+                x1 = x2
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
+            elif branch == 2:
+                y1 = y2
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
+                x3 = x2
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
+            elif branch == 3:
+                y1 = y2
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
+                x1 = x2
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
+        # self.model.train()
         return res
 
 class ForcedMANGO(object):
@@ -608,7 +714,7 @@ class ForcedMANGO(object):
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):        
+    def __call__(self, img, true_label = None):        
         """
         Args:
             img (Tensor): Tensor image of size (C, H, W).
@@ -621,26 +727,30 @@ class ForcedMANGO(object):
         w = img.size(2)
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
         min_mask_len = 7
+        temp_mask_len = self.mask_len
         y1 = 0
         y2 = np.clip(self.mask_len, 0, h)
         y3 = h
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][true_label]
-        ##################
+        if true_label:
+            # value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = 100
-        label = index[0]
         res = img
-        while self.mask_len > min_mask_len:
+        while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
             
             masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
@@ -654,6 +764,7 @@ class ForcedMANGO(object):
                 mask = mask.expand_as(img)
                 masked_img = img * mask
                 #####building child probability
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
                     try:
@@ -669,37 +780,37 @@ class ForcedMANGO(object):
                     res = masked_img
             if branch == -1:
                 return res
-            self.mask_len = self.mask_len//2
+            temp_mask_len = temp_mask_len//2
             if branch == 0:
                 y3 = y2
-                y2 = np.clip(y1 + self.mask_len, 0, y2)
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
                 x3 = x2
-                x2 = np.clip(x1+self.mask_len, 0, x2)
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
             elif branch == 1:
                 y3 = y2
-                y2 = np.clip(y1 + self.mask_len, 0, y2)
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
                 x1 = x2
-                x2 = np.clip(x2+self.mask_len, 0, x3)
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
             elif branch == 2:
                 y1 = y2
-                y2 = np.clip(y2 + self.mask_len, 0, y3)
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
                 x3 = x2
-                x2 = np.clip(x1+self.mask_len, 0, x2)
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
             elif branch == 3:
                 y1 = y2
-                y2 = np.clip(y2 + self.mask_len, 0, y3)
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
                 x1 = x2
-                x2 = np.clip(x2+self.mask_len, 0, x3)
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
         return res
 
-class Mng_RandColor(object):
-    def __init__(self, model, args, data_size=50000):
+class ForcedMANGO_gt(object):
+    def __init__(self, model, args):
         self.model = model
         self.n_branches = args.mng_n_branches
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):        
+    def __call__(self, img, true_label = None):        
         """
         Args:
             img (Tensor): Tensor image of size (C, H, W).
@@ -712,26 +823,126 @@ class Mng_RandColor(object):
         w = img.size(2)
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
         min_mask_len = 7
+        temp_mask_len = self.mask_len
         y1 = 0
         y2 = np.clip(self.mask_len, 0, h)
         y3 = h
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
-        min_prob = value
-        label = index[0]
+        if true_label:
+            # value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
+        max_prob = -1000
         res = img
-        while self.mask_len > min_mask_len:
+        while temp_mask_len > min_mask_len:
+            masks = np.ones((self.n_branches, h, w), np.float32)
+            
+            masks[0][y1: y2, x1: x2] = 0. # or any other colors for mask
+            masks[1][y1: y2, x2: x3] = 0.
+            masks[2][y2: y3, x1: x2] = 0.
+            masks[3][y2: y3, x2: x3] = 0.
+            masks = torch.from_numpy(masks)
+            branch = -1 # referring to original img
+            
+            for m, mask in enumerate(masks):
+                mask = mask.expand_as(img)
+                masked_img = img * mask
+                #####building child probability
+                self.model.eval()
+                with torch.no_grad():
+                    temp_img = masked_img.view(1,3,32,32).to(self.device)
+                    try:
+                        pred = self.model(temp_img).to(self.device)
+                    except:
+                        pred = self.model(temp_img)
+                softmax_prob = nnf.softmax(pred, dim = 1)
+                prob = softmax_prob[0][label]
+
+                if prob > max_prob: ######treshold comes here
+                    max_prob = prob
+                    branch = m
+                    res = masked_img
+            if branch == -1:
+                return res
+            temp_mask_len = temp_mask_len//2
+            if branch == 0:
+                y3 = y2
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
+                x3 = x2
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
+            elif branch == 1:
+                y3 = y2
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
+                x1 = x2
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
+            elif branch == 2:
+                y1 = y2
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
+                x3 = x2
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
+            elif branch == 3:
+                y1 = y2
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
+                x1 = x2
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
+        return res
+
+class Mng_RandColor(object):
+    def __init__(self, model, args, data_size=50000):
+        self.model = model
+        self.n_branches = args.mng_n_branches
+        self.mask_len = args.mng_init_len
+        self.device = args.device
+
+    def __call__(self, img, true_label = None):        
+        """
+        Args:
+            img (Tensor): Tensor image of size (C, H, W).
+        Returns:
+            Tensor: Image with one hole of dimension 
+            ((mask_len * 2) % h x (mask_len * 2) % h) cut out of it.
+            Integer (mask_len * 2) % h : Length of the mask cut out of the image.
+        """
+        h = img.size(1)
+        w = img.size(2)
+        # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
+        min_mask_len = 7
+        temp_mask_len = self.mask_len
+        y1 = 0
+        y2 = np.clip(self.mask_len, 0, h)
+        y3 = h
+        x1 = 0
+        x2 = np.clip(self.mask_len, 0, w)
+        x3 = w
+
+        self.model.eval()
+        with torch.no_grad(): 
+            root_image = img.view(1,3,32,32).to(self.device)
+            try:
+                pred = self.model(root_image).to(self.device)
+            except:
+                pred = self.model(root_image)
+        if true_label:
+            value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
+        min_prob = value
+        res = img
+        while temp_mask_len > min_mask_len:
             masked_imgs = torch.stack([
             maskByColorDistance(img, [y1, y2, x1, x2]),
             maskByColorDistance(img, [y1, y2, x2, x3]),
@@ -741,6 +952,7 @@ class Mng_RandColor(object):
             branch = -1 # referring to original img
 
             for m, masked_img in enumerate(masked_imgs):
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1, 3, 32, 32).to(self.device)
                 try:
@@ -756,30 +968,30 @@ class Mng_RandColor(object):
                     res = masked_img
             if branch == -1:
                 return res
-            self.mask_len = self.mask_len//2
+            temp_mask_len = temp_mask_len//2
             if branch == 0:
                 y3 = y2
-                y2 = np.clip(y1 + self.mask_len, 0, y2)
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
                 x3 = x2
-                x2 = np.clip(x1+self.mask_len, 0, x2)
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
             elif branch == 1:
                 y3 = y2
-                y2 = np.clip(y1 + self.mask_len, 0, y2)
+                y2 = np.clip(y1 + temp_mask_len, 0, y2)
                 x1 = x2
-                x2 = np.clip(x2+self.mask_len, 0, x3)
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
             elif branch == 2:
                 y1 = y2
-                y2 = np.clip(y2 + self.mask_len, 0, y3)
+                y2 = np.clip(y2 + temp_mask_len, 0, y3)
                 x3 = x2
-                x2 = np.clip(x1+self.mask_len, 0, x2)
+                x2 = np.clip(x1+temp_mask_len, 0, x2)
             elif branch == 3:
                 y1 = y2
-                y2 = np.clip(y2 + self.mask_len, 0, y3)
+                y2 = np.clip(y2 +temp_mask_len, 0, y3)
                 x1 = x2
-                x2 = np.clip(x2+self.mask_len, 0, x3)
+                x2 = np.clip(x2+temp_mask_len, 0, x3)
         return res
 
-class MngCut_RandomColor(object):
+class MngCut_RandomColor(object):   
     """If any of 1/4 of the root is chosen by MANGo, it applies Cutout on that quarter.
         If the root is chosen by MANGO, then no Cutout is applied root is returned.
     Args:
@@ -795,7 +1007,7 @@ class MngCut_RandomColor(object):
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):
+    def __call__(self, img, true_label = None):
         """
         Args:
             img (Tensor): Tensor image of size (C, H, W).
@@ -816,18 +1028,21 @@ class MngCut_RandomColor(object):
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
+        if true_label:
+            value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = value
-        label = index[0]
         branch = -2 # referring to original img
         while temp_mask_len > min_mask_len:
             masked_imgs = torch.stack([
@@ -837,6 +1052,7 @@ class MngCut_RandomColor(object):
             maskByColorDistance(img, [y2, y3, x2, x3])])
             
             for m, masked_img in enumerate(masked_imgs):
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1, 3, 32, 32).to(self.device)
                     try:
@@ -898,7 +1114,7 @@ class MngCut_RandomColor(object):
         #     save_image(res, 'new/'+str(random.random())+'.png')
         return res
 
-class MngCut_3x3(object):
+class MngCut_3x3(object):   ##not fixed
     """
         3x3 MANGOCut where a mask of 16x16 is placed on the main 10x10 or 11x11 portion,
         in a wa that it covers whole main portion.
@@ -1015,7 +1231,7 @@ class ForcedMngCut(object):
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):
+    def __call__(self, img, true_label = None):
         h = img.size(1)
         w = img.size(2)
         # change to decide how deep to go. E.g. to go down to 1 pixel mask size set it to 1
@@ -1027,18 +1243,21 @@ class ForcedMngCut(object):
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
+        if true_label:
+            # value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = 100
-        label = index[0]
         branch = -2 # referring to parent img
         while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
@@ -1053,6 +1272,7 @@ class ForcedMngCut(object):
                 mask = mask.expand_as(img)
                 masked_img = img * mask #.to(self.device) # Why error
                 #####building child probability
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
                     try:
@@ -1125,7 +1345,7 @@ class ForcedMngCut_gt(object):
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):
+    def __call__(self, img,true_label = None):
         h = img.size(1)
         w = img.size(2)
         # if img_id not in self.branches:  # still in first epoch
@@ -1138,18 +1358,21 @@ class ForcedMngCut_gt(object):
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
+        if true_label:
+            # value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = -1000
-        label = index[0]
         branch = -2 # referring to original img
         while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
@@ -1164,6 +1387,7 @@ class ForcedMngCut_gt(object):
                 mask = mask.expand_as(img)
                 masked_img = img * mask #.to(self.device) # Why error
                 #####building child probability
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
                     try:
@@ -1211,9 +1435,8 @@ class ForcedMngCut_gt(object):
             branch = -1 #refers to previous parent which is not root (root => -2)
     
         if branch == -2:
-            # self.branches[img_id] = (-2, -2, -2, -2)
-            # by1,by2,bx1,bx2 = (-2, -2, -2, -2)
-            return img
+            print("wrong")
+            exit()
         ####creating rand mask####
         yc = np.random.randint(by1, by2)    #mask center coordinates
         xc = np.random.randint(bx1, bx2)
@@ -1239,7 +1462,7 @@ class MngCut_gt(object):
         self.mask_len = args.mng_init_len
         self.device = args.device
 
-    def __call__(self, img):
+    def __call__(self, img, true_label = None):
         h = img.size(1)
         w = img.size(2)
         # if img_id not in self.branches:  # still in first epoch
@@ -1252,18 +1475,21 @@ class MngCut_gt(object):
         x1 = 0
         x2 = np.clip(self.mask_len, 0, w)
         x3 = w
+
+        self.model.eval()
         with torch.no_grad(): 
             root_image = img.view(1,3,32,32).to(self.device)
             try:
                 pred = self.model(root_image).to(self.device)
             except:
                 pred = self.model(root_image)
-        value, index = nnf.softmax(pred, dim = 1).max(1)
-        ###############new
-        # value = nnf.softmax(pred, dim = 1)[0][label]
-        ##################
+        if true_label:
+            value = nnf.softmax(pred, dim = 1)[0][true_label]
+            label = true_label
+        else:
+            value, index = nnf.softmax(pred, dim = 1).max(1)
+            label = index[0]
         min_prob = value
-        label = index[0]
         branch = -2 # referring to original img
         while temp_mask_len > min_mask_len:
             masks = np.ones((self.n_branches, h, w), np.float32)
@@ -1278,6 +1504,7 @@ class MngCut_gt(object):
                 mask = mask.expand_as(img)
                 masked_img = img * mask #.to(self.device) # Why error
                 #####building child probability
+                self.model.eval()
                 with torch.no_grad():
                     temp_img = masked_img.view(1,3,32,32).to(self.device)
                     try:

@@ -4,8 +4,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import MultiStepLR
 
 from tqdm import tqdm
-import copy
-import time
+
 from pathlib import Path
 
 from models.model_base import Base
@@ -15,21 +14,13 @@ from models.model_VGG import VGG16
 
 def train_and_test(num_classes, logger, args, trainloader = None, testloader=None, is_mango = False):
     model, optimizer, scheduler = _make_model(num_classes, args, is_mango)
-    first_model_path = ''
-    if is_mango and args.retrain:
-        first_model_path = "models/" + args.experiment_name + ".tar"
-    elif not is_mango:
-        first_model_path = args.first_model_load_path
-    if (first_model_path) or (is_mango and args.retrain):
-        # model.load_state_dict(torch.load(args.first_model_load_path))
-        checkpoint = torch.load(first_model_path)
-        model.load_state_dict(checkpoint['model_state_dict'], strict = False)
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-        first_model_path = ''
-        if not is_mango:
-            return model
-    first_model_path = ''    
+    if not is_mango and args.first_model_load_path:
+        model.load_state_dict(torch.load(args.first_model_load_path))
+        model.eval()
+        return model
+    elif is_mango and args.mng_model_load_path:
+        model.load_state_dict(torch.load(args.mng_model_load_path))
+        model.train()
     return _run_epochs(trainloader, testloader, model, optimizer, scheduler, logger, args, is_mango)
 
 def _make_model(num_classes, args, is_mango):
@@ -70,6 +61,7 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
     criterion = nn.CrossEntropyLoss().to(args.device)
     best_acc = 0.
     best_epoch = 1
+    model.train()
     # Train and test the model
     for epoch in range(n_epochs):
         correct = 0.
@@ -79,8 +71,7 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
         progress_bar = tqdm(trainLoader)
         for i, (images, labels) in enumerate(progress_bar):
             progress_bar.set_description('Epoch ' + str(epoch + 1))
-            
-            model.train()
+
             # get the inputs; data is a list of [images, labels]
             images, labels = images.to(args.device), labels.to(args.device)
 
@@ -116,13 +107,9 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
         test_acc = test(model, testLoader, args)
         tqdm.write('test_acc: %.3f' % test_acc)
 
-        if epoch > 160 and test_acc >= best_acc:
+        if test_acc > best_acc:
             best_epoch = epoch + 1
-            best_acc = test_acc
-            if args.save_models:
-                best_state = copy.deepcopy(model.state_dict())
-                best_optimizer = copy.deepcopy(optimizer.state_dict())
-                best_scheduler = copy.deepcopy(scheduler.state_dict())
+            best_acc = max(test_acc, best_acc)
     
         # Save output log
         row = {'epoch': str(epoch + 1), 'train_acc': "  " + str('%.3f' % accuracy), 'test_acc': "  " + str('%.3f' % test_acc)} 
@@ -139,22 +126,12 @@ def _run_epochs(trainLoader, testLoader, model, optimizer, scheduler, csv_logger
             print("Model saving to", "models/MANGO/")
             print("models/MANGO created...")
             Path("models/MANGO/").mkdir(parents=True, exist_ok=True)
-            # torch.save(model.state_dict(), "models/MANGO/" + args.experiment_name + ".pt")
-            torch.save({
-            'model_state_dict': best_state,
-            'optimizer_state_dict': best_optimizer,
-            'scheduler_state_dict': best_scheduler,
-            }, "models/MANGO/" + args.experiment_name + ".tar")
+            torch.save(model.state_dict(), "models/MANGO/" + args.experiment_name + ".pt")
         else:
             print("Model saving to", "models/")
             print("models/ created...")
             Path("models/").mkdir(parents=True, exist_ok=True)
-            # torch.save(model.state_dict(), "models/" + args.experiment_name + ".pt")
-            torch.save({
-            'model_state_dict': best_state,
-            'optimizer_state_dict': best_optimizer,
-            'scheduler_state_dict': best_scheduler,
-            }, "models/" + args.experiment_name + ".tar")
+            torch.save(model.state_dict(), "models/" + args.experiment_name + ".pt")
     return model
 
 def test(model, loader, args):

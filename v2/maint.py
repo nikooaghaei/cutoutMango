@@ -2,11 +2,14 @@ import argparse
 
 import torch
 import torch.backends.cudnn as cudnn
-
+import torch.optim as optim
+from torch.optim.lr_scheduler import MultiStepLR
 from pathlib import Path
 
 from util.MangoBox import load_from, run_mango
-from util.model_tools import train_and_test
+from util.model_toolst import train_and_test
+from util.model_toolst import _run_epochs
+
 from util.data import set_data
 from util.data_v2.data_v2 import set_data_v2
 from util.misc import CSVLogger
@@ -35,8 +38,10 @@ if __name__ == '__main__':
                         choices=model_options)
     parser.add_argument('--first_model_load_path', '-mlp', default='',
                         help='path for the first model to load from(default: None)')
-    # parser.add_argument('--mng_model_load_path', '-mlp2', default='',
-    #                     help='path for the MANGO model to load from(default: None)')
+    parser.add_argument('--mng_model_load_path', '-mlp2', default='',
+                        help='path for the MANGO model to load from(default: None)')
+    # parser.add_argument('--model_save_path', '-sp1', default='',
+    #                     help='path to save both models in models/args.model_save_path (default: None)')
     parser.add_argument('--mng_load_data_path', '-ld', default='',
                         help='path for MANGO data to load (default: None)')
     parser.add_argument('--mng_save_data', '-sd', action='store_true', default=False,
@@ -63,8 +68,6 @@ if __name__ == '__main__':
                         help='random seed (default: 0)')
     parser.add_argument('--mango', action='store_true', default=False,
                         help='apply MANGO')
-    parser.add_argument('--retrain', action='store_true', default=False,
-                        help='continue training if True or use the first model just as infrence if False')
 
     parser.add_argument('--forced', action='store_true', default=False,
                         help='apply forcedMANGOcut')
@@ -103,30 +106,27 @@ if __name__ == '__main__':
     # test_id = args.dataset + '_' + args.model TODO
 
     #### LOADING DATA ####
-    trainloader, testloader, num_classes = set_data(args, is_mango=False)
-    
+    trainloader, testloader, num_classes = set_data(args)
     print("rand_logs/ created...")
     Path("rand_logs/").mkdir(parents=True, exist_ok=True)
     log_filename = 'rand_logs/' + args.experiment_name + '.csv'
     csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
-    #### TRAIN/TEST MODEL ####
-    model = train_and_test(num_classes, csv_logger, args, trainloader, testloader, is_mango=False)
-
-    csv_logger.close()
-
+    model = train_and_test(num_classes, csv_logger, args, trainloader, testloader, False)
     if args.mango:
-        #### CREATING A FIXED MANGO DATA ####
-        # mango_trainloader, num_classes = run_mango(model, trainloader, args)
-    
         #### USING MANGO AS A DATA TRANSFORM ####
-        mng_trainloader, mng_testloader , mng_num_classes = set_data(args, model, is_mango = True)
+        model.eval()
+        mango_trainloader, mango_testloader , num_classes = set_data(args, model, is_mango = True)
 
         print("rand_logs/MANGO/ created...")
         Path("rand_logs/MANGO/").mkdir(parents=True, exist_ok=True)
         log_filename = 'rand_logs/MANGO/' + args.experiment_name + '.csv'
         mng_csv_logger = CSVLogger(args=args, fieldnames=['epoch', 'train_acc', 'test_acc'], filename=log_filename)
 
+        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate,
+                                        momentum=0.9, nesterov=True, weight_decay=5e-4)
+        scheduler = MultiStepLR(optimizer, milestones=[60, 120, 160], gamma=0.2)
         #### TRAINING WITH MANGO DATA ####
-        mng_model = train_and_test(mng_num_classes, mng_csv_logger, args, mng_trainloader, mng_testloader, is_mango = True)        
+        mng_model = _run_epochs(mango_trainloader, mango_testloader, model,optimizer, scheduler, mng_csv_logger,args, True)
+
         mng_csv_logger.close()
