@@ -140,3 +140,5 @@ cython_debug/
 *.tar.gz
 
 .DS_Store
+.vscode
+
